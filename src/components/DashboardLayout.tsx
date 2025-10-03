@@ -44,7 +44,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          "h-screen bg-background border-r border-border flex flex-col transition-all duration-300 ease-in-out",
+          "h-screen bg-background flex flex-col transition-all duration-300 ease-in-out",
           isExpanded ? "w-64" : "w-16"
         )}
         onMouseEnter={() => setIsExpanded(true)}
