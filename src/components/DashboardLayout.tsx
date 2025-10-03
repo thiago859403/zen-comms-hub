@@ -10,34 +10,100 @@ import {
   Home,
   BarChart3,
   Megaphone,
+  ChevronDown,
+  ChevronRight,
+  Bot,
+  Sparkles,
+  FileText,
+  MessageCircle,
+  GitBranch,
+  Headphones,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import zenviaIcon from "@/assets/zenvia-icon.png";
 
 interface DashboardLayoutProps {
   children: ReactNode;
 }
 
+interface SubMenuItem {
+  label: string;
+  path: string;
+}
+
 interface MenuItem {
   icon: any;
   label: string;
-  path: string;
+  path?: string;
   hasSubmenu?: boolean;
   badge?: string;
+  submenu?: SubMenuItem[];
 }
 
 const menuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/dashboard" },
-  { icon: Users, label: "Contatos", path: "/dashboard/contacts" },
+  { 
+    icon: Users, 
+    label: "Contatos", 
+    path: "/dashboard/contacts",
+    hasSubmenu: true,
+    submenu: []
+  },
   { icon: Send, label: "Envio de mensagens", path: "/dashboard/campaigns" },
   { icon: Megaphone, label: "Anúncios", path: "/dashboard/templates" },
-  { icon: MessageSquare, label: "Atendimento comercial", path: "/dashboard/chats" },
-  { icon: BarChart3, label: "Análises", path: "/dashboard/analytics" },
+  { 
+    icon: MessageSquare, 
+    label: "Atendimento comercial", 
+    path: "/dashboard/chats",
+    hasSubmenu: true,
+    submenu: []
+  },
+  { 
+    icon: Headphones, 
+    label: "Atendimento de suporte",
+    hasSubmenu: true,
+    submenu: []
+  },
+  { 
+    icon: Bot, 
+    label: "Chatbot",
+    hasSubmenu: true,
+    submenu: [
+      { label: "Lista de chatbots", path: "/dashboard/chatbots" },
+      { label: "Bases de conhecimento", path: "/dashboard/knowledge-bases" },
+      { label: "Conversas", path: "/dashboard/conversations" },
+      { label: "Mapa de fluxos", path: "/dashboard/flow-map" },
+    ]
+  },
+  { 
+    icon: Sparkles, 
+    label: "Agentes especialistas", 
+    path: "/dashboard/agents",
+    badge: "Beta"
+  },
+  { 
+    icon: BarChart3, 
+    label: "Análises", 
+    path: "/dashboard/analytics",
+    hasSubmenu: true,
+  },
 ];
 
 const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   const location = useLocation();
   const [isExpanded, setIsExpanded] = useState(false);
+  const [openMenus, setOpenMenus] = useState<{ [key: string]: boolean }>({
+    "Chatbot": true // Default open
+  });
+
+  const toggleMenu = (label: string) => {
+    setOpenMenus(prev => ({ ...prev, [label]: !prev[label] }));
+  };
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -67,14 +133,101 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
 
         {/* Menu */}
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
-          {menuItems.map((item) => {
+          {menuItems.map((item, index) => {
             const Icon = item.icon;
-            const isActive = location.pathname === item.path;
+            const isActive = item.path && location.pathname === item.path;
+            const isOpen = openMenus[item.label];
+            
+            if (item.hasSubmenu && item.submenu && item.submenu.length > 0) {
+              return (
+                <Collapsible
+                  key={item.label}
+                  open={isOpen}
+                  onOpenChange={() => toggleMenu(item.label)}
+                >
+                  <CollapsibleTrigger asChild>
+                    <button
+                      className={cn(
+                        "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group",
+                        isActive
+                          ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {isExpanded && (
+                        <>
+                          <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
+                          {item.badge && (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                              {item.badge}
+                            </span>
+                          )}
+                          {isOpen ? (
+                            <ChevronDown className="h-4 w-4 shrink-0" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4 shrink-0" />
+                          )}
+                        </>
+                      )}
+                    </button>
+                  </CollapsibleTrigger>
+                  {isExpanded && (
+                    <CollapsibleContent className="space-y-1">
+                      {item.submenu.map((subItem) => {
+                        const isSubActive = location.pathname === subItem.path;
+                        return (
+                          <Link
+                            key={subItem.path}
+                            to={subItem.path}
+                            className={cn(
+                              "flex items-center gap-3 rounded-md pl-12 pr-3 py-2 text-sm transition-all relative",
+                              isSubActive
+                                ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-6 before:bg-primary before:rounded-r"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <span className="whitespace-nowrap">{subItem.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </CollapsibleContent>
+                  )}
+                </Collapsible>
+              );
+            }
+
+            if (item.hasSubmenu && (!item.submenu || item.submenu.length === 0)) {
+              return (
+                <button
+                  key={item.label}
+                  className={cn(
+                    "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group",
+                    isActive
+                      ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-5 w-5 shrink-0" />
+                  {isExpanded && (
+                    <>
+                      <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
+                      {item.badge && (
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                          {item.badge}
+                        </span>
+                      )}
+                      <ChevronDown className="h-4 w-4 shrink-0" />
+                    </>
+                  )}
+                </button>
+              );
+            }
             
             return (
               <Link
                 key={item.path}
-                to={item.path}
+                to={item.path!}
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group",
                   isActive
@@ -87,7 +240,7 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
                   <>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
                         {item.badge}
                       </span>
                     )}
