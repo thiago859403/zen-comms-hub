@@ -23,14 +23,20 @@ interface DashboardLayoutProps {
   children: ReactNode;
 }
 
-const menuItems = [
+interface MenuItem {
+  icon: any;
+  label: string;
+  path: string;
+  hasSubmenu?: boolean;
+  badge?: string;
+}
+
+const menuItems: MenuItem[] = [
   { icon: Home, label: "Início", path: "/dashboard" },
   { icon: Users, label: "Contatos", path: "/dashboard/contacts" },
   { icon: Send, label: "Envio de mensagens", path: "/dashboard/campaigns" },
   { icon: Megaphone, label: "Anúncios", path: "/dashboard/templates" },
-  { icon: MessageSquare, label: "Atendimento comercial", path: "/dashboard/chats", hasSubmenu: true },
-  { icon: Bot, label: "Chatbot", path: "/dashboard/chatbot", hasSubmenu: true },
-  { icon: Sparkles, label: "Agentes especialistas", path: "/dashboard/agents", badge: "Beta" },
+  { icon: MessageSquare, label: "Atendimento comercial", path: "/dashboard/chats" },
   { icon: BarChart3, label: "Análises", path: "/dashboard/analytics" },
 ];
 
