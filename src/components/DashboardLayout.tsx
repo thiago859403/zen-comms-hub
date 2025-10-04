@@ -117,19 +117,19 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
         onMouseLeave={() => setIsExpanded(false)}
       >
         {/* Logo Area - Dark */}
-        <div className="bg-[#555555] h-16 flex items-center px-4">
-          <Link to="/dashboard" className="flex items-center gap-3">
+        <div className="bg-[#1a1a1a] h-16 flex items-center px-4 border-b border-gray-800">
+          <Link to="/dashboard" className="flex items-center gap-2">
             <img src={zenviaIcon} alt="Zenvia" className="h-8 w-8 shrink-0" />
             {isExpanded && (
-              <span className="text-white font-bold tracking-[0.3em] whitespace-nowrap text-sm">
-                Z·E·N·V·I·A
+              <span className="text-white font-semibold tracking-wide whitespace-nowrap">
+                ZENVIA
               </span>
             )}
           </Link>
         </div>
 
         {/* Gradient Bar */}
-        <div className="h-1.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600" />
+        <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
 
         {/* Menu */}
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
@@ -271,14 +271,14 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       {/* Main content */}
       <div className="flex-1 flex flex-col h-screen">
         {/* Dark Header with Gradient */}
-        <header className="bg-[#555555]">
+        <header className="bg-[#1a1a1a] border-b border-gray-800">
           <div className="h-16 flex items-center px-6">
             <Button variant="ghost" size="icon" className="md:hidden text-white hover:bg-white/10">
               <Menu className="h-5 w-5" />
             </Button>
           </div>
           {/* Gradient Bar */}
-          <div className="h-1.5 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600" />
+          <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
         </header>
 
         {/* Page content */}
