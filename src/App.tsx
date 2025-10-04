@@ -12,6 +12,16 @@ import Chats from "./pages/Chats";
 import Templates from "./pages/Templates";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import MessageSending from "./pages/MessageSending";
+import Announcements from "./pages/Announcements";
+import CommercialSupport from "./pages/CommercialSupport";
+import CustomerSupport from "./pages/CustomerSupport";
+import ChatbotList from "./pages/ChatbotList";
+import KnowledgeBases from "./pages/KnowledgeBases";
+import Conversations from "./pages/Conversations";
+import FlowMap from "./pages/FlowMap";
+import SpecialistAgents from "./pages/SpecialistAgents";
+import Analytics from "./pages/Analytics";
 
 const queryClient = new QueryClient();
 
@@ -30,6 +40,16 @@ const App = () => (
           <Route path="/dashboard/chats" element={<Chats />} />
           <Route path="/dashboard/templates" element={<Templates />} />
           <Route path="/dashboard/settings" element={<Settings />} />
+          <Route path="/dashboard/message-sending" element={<MessageSending />} />
+          <Route path="/dashboard/announcements" element={<Announcements />} />
+          <Route path="/dashboard/commercial-support" element={<CommercialSupport />} />
+          <Route path="/dashboard/customer-support" element={<CustomerSupport />} />
+          <Route path="/dashboard/chatbots" element={<ChatbotList />} />
+          <Route path="/dashboard/knowledge-bases" element={<KnowledgeBases />} />
+          <Route path="/dashboard/conversations" element={<Conversations />} />
+          <Route path="/dashboard/flow-map" element={<FlowMap />} />
+          <Route path="/dashboard/specialist-agents" element={<SpecialistAgents />} />
+          <Route path="/dashboard/analytics" element={<Analytics />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

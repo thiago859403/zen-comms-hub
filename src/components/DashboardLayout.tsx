@@ -54,18 +54,19 @@ const menuItems: MenuItem[] = [
     hasSubmenu: true,
     submenu: []
   },
-  { icon: Send, label: "Envio de mensagens", path: "/dashboard/campaigns" },
-  { icon: Megaphone, label: "Anúncios", path: "/dashboard/templates" },
+  { icon: Send, label: "Envio de mensagens", path: "/dashboard/message-sending" },
+  { icon: Megaphone, label: "Anúncios", path: "/dashboard/announcements" },
   { 
     icon: MessageSquare, 
     label: "Atendimento comercial", 
-    path: "/dashboard/chats",
+    path: "/dashboard/commercial-support",
     hasSubmenu: true,
     submenu: []
   },
   { 
     icon: Headphones, 
     label: "Atendimento de suporte",
+    path: "/dashboard/customer-support",
     hasSubmenu: true,
     submenu: []
   },
@@ -83,7 +84,7 @@ const menuItems: MenuItem[] = [
   { 
     icon: Sparkles, 
     label: "Agentes especialistas", 
-    path: "/dashboard/agents",
+    path: "/dashboard/specialist-agents",
     badge: "Beta"
   },
   { 
@@ -91,6 +92,7 @@ const menuItems: MenuItem[] = [
     label: "Análises", 
     path: "/dashboard/analytics",
     hasSubmenu: true,
+    submenu: []
   },
 ];
 
