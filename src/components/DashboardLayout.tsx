@@ -121,11 +121,11 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar */}
+    <div className="min-h-screen bg-background">
+      {/* Sidebar - Fixed */}
       <aside
         className={cn(
-          "h-screen bg-background flex flex-col transition-all duration-300 ease-in-out",
+          "fixed left-0 top-0 h-screen bg-background flex flex-col transition-all duration-300 ease-in-out z-40",
           isExpanded ? "w-64" : "w-16"
         )}
         onMouseEnter={() => setIsExpanded(true)}
@@ -284,7 +284,12 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col h-screen">
+      <div 
+        className={cn(
+          "flex flex-col h-screen transition-all duration-300 ease-in-out",
+          isExpanded ? "ml-64" : "ml-16"
+        )}
+      >
         {/* Dark Header with Gradient - Fixed */}
         <header className="sticky top-0 z-50 bg-[#1a1a1a] border-b border-gray-800">
           <div className="h-16 flex items-center justify-between px-6">
