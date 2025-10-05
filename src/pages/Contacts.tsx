@@ -4,9 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Plus,
   Search,
-  Upload,
   Download,
   MoreVertical,
   UserPlus,
@@ -28,11 +26,33 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AddContactDialog } from "@/components/contacts/AddContactDialog";
+import { EditContactDialog } from "@/components/contacts/EditContactDialog";
+import { ImportCSVDialog } from "@/components/contacts/ImportCSVDialog";
+import { useToast } from "@/hooks/use-toast";
+
+interface Contact {
+  id: number;
+  name: string;
+  phone: string;
+  email: string;
+  tags: string[];
+  lastContact: string;
+}
 
 const Contacts = () => {
   const [searchQuery, setSearchQuery] = useState("");
-
-  const contacts = [
+  const [contacts, setContacts] = useState<Contact[]>([
     {
       id: 1,
       name: "Ana Silva",
@@ -65,7 +85,93 @@ const Contacts = () => {
       tags: ["Lead", "Interessado"],
       lastContact: "1 dia atrás",
     },
-  ];
+  ]);
+  const [selectedContacts, setSelectedContacts] = useState<number[]>([]);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [contactToDelete, setContactToDelete] = useState<number | null>(null);
+  const { toast } = useToast();
+
+  const filteredContacts = contacts.filter(
+    (contact) =>
+      contact.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      contact.phone.includes(searchQuery) ||
+      contact.email.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleSelectAll = () => {
+    if (selectedContacts.length === filteredContacts.length) {
+      setSelectedContacts([]);
+    } else {
+      setSelectedContacts(filteredContacts.map((c) => c.id));
+    }
+  };
+
+  const handleSelectContact = (id: number) => {
+    setSelectedContacts((prev) =>
+      prev.includes(id) ? prev.filter((cid) => cid !== id) : [...prev, id]
+    );
+  };
+
+  const handleAddContact = (newContact: Contact) => {
+    setContacts((prev) => [...prev, newContact]);
+  };
+
+  const handleUpdateContact = (updatedContact: Contact) => {
+    setContacts((prev) =>
+      prev.map((c) => (c.id === updatedContact.id ? updatedContact : c))
+    );
+  };
+
+  const handleDeleteContact = () => {
+    if (contactToDelete) {
+      setContacts((prev) => prev.filter((c) => c.id !== contactToDelete));
+      toast({
+        title: "Sucesso",
+        description: "Contato excluído com sucesso",
+      });
+      setDeleteDialogOpen(false);
+      setContactToDelete(null);
+    }
+  };
+
+  const handleImportContacts = (importedContacts: Contact[]) => {
+    setContacts((prev) => [...prev, ...importedContacts]);
+  };
+
+  const handleExportCSV = () => {
+    const csvContent = [
+      ["Nome", "Telefone", "Email", "Tags"],
+      ...filteredContacts.map((c) => [
+        c.name,
+        c.phone,
+        c.email,
+        c.tags.join(";"),
+      ]),
+    ]
+      .map((row) => row.join(","))
+      .join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "contatos.csv";
+    a.click();
+    
+    toast({
+      title: "Sucesso",
+      description: "Contatos exportados com sucesso",
+    });
+  };
+
+  const handleAddToCampaign = (contactId: number) => {
+    toast({
+      title: "Em desenvolvimento",
+      description: "Esta funcionalidade será implementada em breve",
+    });
+  };
 
   return (
     <DashboardLayout>
@@ -79,14 +185,8 @@ const Contacts = () => {
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline">
-              <Upload className="mr-2 h-4 w-4" />
-              Importar CSV
-            </Button>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Novo Contato
-            </Button>
+            <ImportCSVDialog onContactsImported={handleImportContacts} />
+            <AddContactDialog onContactAdded={handleAddContact} />
           </div>
         </div>
 
@@ -94,19 +194,23 @@ const Contacts = () => {
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">Total de Contatos</p>
-            <p className="text-2xl font-bold mt-1">3,456</p>
+            <p className="text-2xl font-bold mt-1">{contacts.length}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Novos este mês</p>
-            <p className="text-2xl font-bold mt-1">234</p>
+            <p className="text-sm text-muted-foreground">Selecionados</p>
+            <p className="text-2xl font-bold mt-1">{selectedContacts.length}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-sm text-muted-foreground">Clientes Ativos</p>
-            <p className="text-2xl font-bold mt-1">1,890</p>
+            <p className="text-sm text-muted-foreground">Clientes</p>
+            <p className="text-2xl font-bold mt-1">
+              {contacts.filter((c) => c.tags.includes("Cliente")).length}
+            </p>
           </Card>
           <Card className="p-4">
             <p className="text-sm text-muted-foreground">Leads</p>
-            <p className="text-2xl font-bold mt-1">1,566</p>
+            <p className="text-2xl font-bold mt-1">
+              {contacts.filter((c) => c.tags.includes("Lead")).length}
+            </p>
           </Card>
         </div>
 
@@ -122,10 +226,24 @@ const Contacts = () => {
                 className="pl-9"
               />
             </div>
-            <Button variant="outline">
+            <Button variant="outline" onClick={handleExportCSV}>
               <Download className="mr-2 h-4 w-4" />
               Exportar
             </Button>
+            {selectedContacts.length > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedContacts([]);
+                  toast({
+                    title: "Seleção limpa",
+                    description: "Todos os contatos foram desmarcados",
+                  });
+                }}
+              >
+                Limpar seleção ({selectedContacts.length})
+              </Button>
+            )}
           </div>
         </Card>
 
@@ -135,7 +253,13 @@ const Contacts = () => {
             <TableHeader>
               <TableRow>
                 <TableHead className="w-12">
-                  <Checkbox />
+                  <Checkbox
+                    checked={
+                      filteredContacts.length > 0 &&
+                      selectedContacts.length === filteredContacts.length
+                    }
+                    onCheckedChange={handleSelectAll}
+                  />
                 </TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Telefone</TableHead>
@@ -146,10 +270,13 @@ const Contacts = () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {contacts.map((contact) => (
+              {filteredContacts.map((contact) => (
                 <TableRow key={contact.id}>
                   <TableCell>
-                    <Checkbox />
+                    <Checkbox
+                      checked={selectedContacts.includes(contact.id)}
+                      onCheckedChange={() => handleSelectContact(contact.id)}
+                    />
                   </TableCell>
                   <TableCell className="font-medium">{contact.name}</TableCell>
                   <TableCell>{contact.phone}</TableCell>
@@ -177,15 +304,28 @@ const Contacts = () => {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingContact(contact);
+                            setEditDialogOpen(true);
+                          }}
+                        >
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleAddToCampaign(contact.id)}
+                        >
                           <UserPlus className="mr-2 h-4 w-4" />
                           Adicionar a campanha
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => {
+                            setContactToDelete(contact.id);
+                            setDeleteDialogOpen(true);
+                          }}
+                        >
                           <Trash2 className="mr-2 h-4 w-4" />
                           Excluir
                         </DropdownMenuItem>
@@ -197,6 +337,30 @@ const Contacts = () => {
             </TableBody>
           </Table>
         </Card>
+
+        <EditContactDialog
+          contact={editingContact}
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onContactUpdated={handleUpdateContact}
+        />
+
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+              <AlertDialogDescription>
+                Tem certeza que deseja excluir este contato? Esta ação não pode ser desfeita.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteContact}>
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </DashboardLayout>
   );
