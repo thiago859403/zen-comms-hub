@@ -18,6 +18,9 @@ import {
   MessageCircle,
   GitBranch,
   Headphones,
+  HelpCircle,
+  Bell,
+  FileStack,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +28,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import zenviaIcon from "@/assets/zenvia-icon.png";
 
 interface DashboardLayoutProps {
@@ -274,10 +287,113 @@ const DashboardLayout = ({ children }: DashboardLayoutProps) => {
       <div className="flex-1 flex flex-col h-screen">
         {/* Dark Header with Gradient - Fixed */}
         <header className="sticky top-0 z-50 bg-[#1a1a1a] border-b border-gray-800">
-          <div className="h-16 flex items-center px-6">
+          <div className="h-16 flex items-center justify-between px-6">
             <Button variant="ghost" size="icon" className="md:hidden text-white hover:bg-white/10">
               <Menu className="h-5 w-5" />
             </Button>
+            
+            {/* Right side icons and user menu */}
+            <div className="flex items-center gap-2 ml-auto">
+              {/* Help/Support Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/10"
+                title="Ajuda"
+              >
+                <HelpCircle className="h-5 w-5" />
+              </Button>
+              
+              {/* Notifications Icon with Badge */}
+              <div className="relative">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white hover:bg-white/10"
+                  title="Notificações"
+                >
+                  <Bell className="h-5 w-5" />
+                </Button>
+                <Badge 
+                  variant="destructive" 
+                  className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                >
+                  3
+                </Badge>
+              </div>
+              
+              {/* Files/Documents Icon */}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/10"
+                title="Arquivos"
+              >
+                <FileStack className="h-5 w-5" />
+              </Button>
+              
+              {/* Organization Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="text-white hover:bg-white/10 gap-2"
+                  >
+                    <div className="text-left">
+                      <div className="text-sm font-medium">Nuvia Customer Cloud</div>
+                      <div className="text-xs text-gray-400">Organização principal</div>
+                    </div>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 bg-card z-[100]">
+                  <DropdownMenuLabel>Organizações</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <div>
+                      <div className="font-medium">Nuvia Customer Cloud</div>
+                      <div className="text-xs text-muted-foreground">Organização principal</div>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <span className="text-primary">+ Adicionar organização</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {/* User Avatar Dropdown */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="relative h-10 w-10 rounded-full hover:bg-white/10"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        NU
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 bg-card z-[100]">
+                  <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <Users className="mr-2 h-4 w-4" />
+                    <span>Perfil</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Configurações</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-destructive">
+                    <span>Sair</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           {/* Gradient Bar */}
           <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
