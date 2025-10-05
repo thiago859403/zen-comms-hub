@@ -12,7 +12,7 @@ const Landing = () => {
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <MessageSquare className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold">WhatsAutomate</span>
+            <span className="text-xl font-bold">Nuvia Customer Cloud</span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
@@ -139,7 +139,7 @@ const Landing = () => {
             <div>
               <div className="flex items-center gap-2 mb-4">
                 <MessageSquare className="h-6 w-6 text-primary" />
-                <span className="font-bold">WhatsAutomate</span>
+                <span className="font-bold">Nuvia Customer Cloud</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 Plataforma completa de automação para WhatsApp Business.
@@ -170,7 +170,7 @@ const Landing = () => {
             </div>
           </div>
           <div className="mt-12 pt-8 border-t border-border text-center text-sm text-muted-foreground">
-            © 2025 WhatsAutomate. Todos os direitos reservados.
+            © 2025 Nuvia Customer Cloud. Todos os direitos reservados.
           </div>
         </div>
       </footer>
