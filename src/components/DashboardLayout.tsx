@@ -30,9 +30,7 @@ const menuItems: MenuItem[] = [{
 }, {
   icon: Users,
   label: "Contatos",
-  path: "/dashboard/contacts",
-  hasSubmenu: true,
-  submenu: []
+  path: "/dashboard/contacts"
 }, {
   icon: Send,
   label: "Envio de mensagens",
