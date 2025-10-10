@@ -44,15 +44,11 @@ const menuItems: MenuItem[] = [{
 }, {
   icon: MessageSquare,
   label: "Atendimento comercial",
-  path: "/dashboard/commercial-support",
-  hasSubmenu: true,
-  submenu: []
+  path: "/dashboard/commercial-support"
 }, {
   icon: Headphones,
   label: "Atendimento de suporte",
-  path: "/dashboard/customer-support",
-  hasSubmenu: true,
-  submenu: []
+  path: "/dashboard/customer-support"
 }, {
   icon: Bot,
   label: "Chatbot",
