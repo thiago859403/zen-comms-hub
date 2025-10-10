@@ -8,10 +8,16 @@ import {
   TrendingUp,
   ArrowUpRight,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import DashboardLayout from "@/components/DashboardLayout";
 import dashboardIllustration from "@/assets/dashboard-illustration.jpg";
 
 const Dashboard = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
   const stats = [
     {
       label: "Mensagens Enviadas",
@@ -54,7 +60,7 @@ const Dashboard = () => {
               Aqui está o resumo das suas campanhas
             </p>
           </div>
-          <Button>
+          <Button onClick={() => navigate("/dashboard/campaigns")}>
             <Send className="mr-2 h-4 w-4" />
             Nova Campanha
           </Button>
@@ -92,7 +98,11 @@ const Dashboard = () => {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Mensagens nos últimos 7 dias</h3>
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate("/dashboard/analytics")}
+              >
                 Ver detalhes
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
@@ -106,7 +116,11 @@ const Dashboard = () => {
           <Card className="p-6">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold">Campanhas Recentes</h3>
-              <Button variant="ghost" size="sm">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate("/dashboard/campaigns")}
+              >
                 Ver todas
                 <ArrowUpRight className="ml-2 h-4 w-4" />
               </Button>
@@ -141,9 +155,21 @@ const Dashboard = () => {
                 Configure sua primeira campanha e comece a enviar mensagens automatizadas para seus contatos.
               </p>
               <div className="flex flex-wrap gap-3">
-                <Button>Criar Campanha</Button>
-                <Button variant="outline">Importar Contatos</Button>
-                <Button variant="outline">Criar Template</Button>
+                <Button onClick={() => navigate("/dashboard/campaigns")}>
+                  Criar Campanha
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/dashboard/contacts")}
+                >
+                  Importar Contatos
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate("/dashboard/templates")}
+                >
+                  Criar Template
+                </Button>
               </div>
             </div>
           </div>
@@ -152,10 +178,5 @@ const Dashboard = () => {
     </DashboardLayout>
   );
 };
-
-// Helper function for className (since cn wasn't imported)
-function cn(...classes: string[]) {
-  return classes.filter(Boolean).join(" ");
-}
 
 export default Dashboard;
