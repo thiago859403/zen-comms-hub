@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, HelpCircle, Bell, FileStack } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -78,12 +79,54 @@ const DashboardLayout = ({
   children
 }: DashboardLayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [isExpanded, setIsExpanded] = useState(false);
   const [openMenus, setOpenMenus] = useState<{
     [key: string]: boolean;
   }>({
     "Chatbot": true // Default open
   });
+
+  const handleHelp = () => {
+    toast({
+      title: "Central de Ajuda",
+      description: "A central de ajuda será aberta em breve.",
+    });
+  };
+
+  const handleNotifications = () => {
+    toast({
+      title: "Notificações",
+      description: "Você tem 3 notificações não lidas.",
+    });
+  };
+
+  const handleFiles = () => {
+    toast({
+      title: "Arquivos",
+      description: "Gerenciador de arquivos será aberto em breve.",
+    });
+  };
+
+  const handleProfile = () => {
+    navigate("/dashboard/settings");
+    toast({
+      title: "Perfil",
+      description: "Navegando para as configurações de perfil.",
+    });
+  };
+
+  const handleLogout = () => {
+    toast({
+      title: "Saindo...",
+      description: "Você será desconectado em instantes.",
+      variant: "destructive",
+    });
+    setTimeout(() => {
+      navigate("/auth");
+    }, 1500);
+  };
   const toggleMenu = (label: string) => {
     setOpenMenus(prev => ({
       ...prev,
@@ -180,13 +223,25 @@ const DashboardLayout = ({
             {/* Right side icons and user menu */}
             <div className="flex items-center gap-2 ml-auto">
               {/* Help/Support Icon */}
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" title="Ajuda">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/10" 
+                title="Ajuda"
+                onClick={handleHelp}
+              >
                 <HelpCircle className="h-5 w-5" />
               </Button>
               
               {/* Notifications Icon with Badge */}
               <div className="relative">
-                <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" title="Notificações">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="text-white hover:bg-white/10" 
+                  title="Notificações"
+                  onClick={handleNotifications}
+                >
                   <Bell className="h-5 w-5" />
                 </Button>
                 <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
@@ -195,7 +250,13 @@ const DashboardLayout = ({
               </div>
               
               {/* Files/Documents Icon */}
-              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10" title="Arquivos">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="text-white hover:bg-white/10" 
+                title="Arquivos"
+                onClick={handleFiles}
+              >
                 <FileStack className="h-5 w-5" />
               </Button>
               
@@ -240,16 +301,16 @@ const DashboardLayout = ({
                 <DropdownMenuContent align="end" className="w-56 bg-card z-[100]">
                   <DropdownMenuLabel>Minha Conta</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleProfile}>
                     <Users className="mr-2 h-4 w-4" />
                     <span>Perfil</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/dashboard/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configurações</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                     <span>Sair</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
