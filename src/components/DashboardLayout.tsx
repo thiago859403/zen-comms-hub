@@ -72,9 +72,7 @@ const menuItems: MenuItem[] = [{
 }, {
   icon: BarChart3,
   label: "Análises",
-  path: "/dashboard/analytics",
-  hasSubmenu: true,
-  submenu: []
+  path: "/dashboard/analytics"
 }];
 const DashboardLayout = ({
   children
