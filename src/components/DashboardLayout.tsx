@@ -91,6 +91,9 @@ const DashboardLayout = ({
     }));
   };
   return <div className="min-h-screen bg-background">
+      {/* Gradient Bar - Fixed at top */}
+      <div className="fixed top-16 left-0 right-0 h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500 z-50" />
+
       {/* Sidebar - Fixed */}
       <aside className={cn("fixed left-0 top-0 h-screen bg-background flex flex-col transition-all duration-300 ease-in-out z-40", isExpanded ? "w-64" : "w-16")} onMouseEnter={() => setIsExpanded(true)} onMouseLeave={() => setIsExpanded(false)}>
         {/* Logo Area - Dark */}
@@ -101,9 +104,6 @@ const DashboardLayout = ({
           </span>}
           </Link>
         </div>
-
-        {/* Gradient Bar */}
-        <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
 
         {/* Menu */}
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto">
@@ -256,8 +256,6 @@ const DashboardLayout = ({
               </DropdownMenu>
             </div>
           </div>
-          {/* Gradient Bar */}
-          <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
         </header>
 
         {/* Page content */}
