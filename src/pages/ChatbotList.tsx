@@ -1,14 +1,15 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, Search, Plus, MoreVertical, Edit, Trash2, Play, Pause } from "lucide-react";
+import { Bot, Search, Plus, MoreVertical, Edit, Trash2, Play, Pause, GitBranch, Eye } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,23 +18,35 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 
+interface Chatbot {
+  id: number;
+  name: string;
+  type: string;
+  status: string;
+  messages: string;
+  description?: string;
+}
+
 const ChatbotList = () => {
+  const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedBot, setSelectedBot] = useState<Chatbot | null>(null);
   const { toast } = useToast();
 
-  const [bots, setBots] = useState([
-    { id: 1, name: "Atendimento Comercial", type: "Vendas", status: "Ativo", messages: "2.5k" },
-    { id: 2, name: "Suporte Técnico", type: "Suporte", status: "Ativo", messages: "1.8k" },
-    { id: 3, name: "FAQ Automático", type: "FAQ", status: "Pausado", messages: "892" },
-    { id: 4, name: "Agendamento", type: "Serviços", status: "Ativo", messages: "1.2k" },
-    { id: 5, name: "Pós-venda", type: "Relacionamento", status: "Ativo", messages: "654" },
-    { id: 6, name: "Onboarding", type: "Educacional", status: "Ativo", messages: "423" },
+  const [bots, setBots] = useState<Chatbot[]>([
+    { id: 1, name: "Atendimento Comercial", type: "Vendas", status: "Ativo", messages: "2.5k", description: "Chatbot para atendimento de vendas e prospecção" },
+    { id: 2, name: "Suporte Técnico", type: "Suporte", status: "Ativo", messages: "1.8k", description: "Suporte técnico automatizado" },
+    { id: 3, name: "FAQ Automático", type: "FAQ", status: "Pausado", messages: "892", description: "Respostas automáticas para perguntas frequentes" },
+    { id: 4, name: "Agendamento", type: "Serviços", status: "Ativo", messages: "1.2k", description: "Agendamento de serviços e consultas" },
+    { id: 5, name: "Pós-venda", type: "Relacionamento", status: "Ativo", messages: "654", description: "Acompanhamento pós-venda" },
+    { id: 6, name: "Onboarding", type: "Educacional", status: "Ativo", messages: "423", description: "Onboarding de novos clientes" },
   ]);
 
-  const [newBot, setNewBot] = useState({
+  const [formData, setFormData] = useState({
     name: "",
     type: "Vendas",
     description: "",
@@ -48,7 +61,7 @@ const ChatbotList = () => {
   });
 
   const handleCreateBot = () => {
-    if (!newBot.name) {
+    if (!formData.name) {
       toast({
         title: "Erro",
         description: "Por favor, insira um nome para o chatbot",
@@ -57,22 +70,59 @@ const ChatbotList = () => {
       return;
     }
 
-    const bot = {
+    const bot: Chatbot = {
       id: bots.length + 1,
-      name: newBot.name,
-      type: newBot.type,
+      name: formData.name,
+      type: formData.type,
       status: "Ativo",
       messages: "0",
+      description: formData.description,
     };
 
     setBots([...bots, bot]);
     setIsCreateDialogOpen(false);
-    setNewBot({ name: "", type: "Vendas", description: "" });
+    setFormData({ name: "", type: "Vendas", description: "" });
     
     toast({
       title: "Chatbot criado!",
-      description: `${newBot.name} foi criado com sucesso.`,
+      description: `${formData.name} foi criado com sucesso.`,
     });
+  };
+
+  const handleEditBot = () => {
+    if (!selectedBot || !formData.name) {
+      toast({
+        title: "Erro",
+        description: "Por favor, insira um nome para o chatbot",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setBots(bots.map(bot => 
+      bot.id === selectedBot.id 
+        ? { ...bot, name: formData.name, type: formData.type, description: formData.description }
+        : bot
+    ));
+    
+    setIsEditDialogOpen(false);
+    setSelectedBot(null);
+    setFormData({ name: "", type: "Vendas", description: "" });
+    
+    toast({
+      title: "Chatbot atualizado!",
+      description: "As alterações foram salvas com sucesso.",
+    });
+  };
+
+  const openEditDialog = (bot: Chatbot) => {
+    setSelectedBot(bot);
+    setFormData({
+      name: bot.name,
+      type: bot.type,
+      description: bot.description || "",
+    });
+    setIsEditDialogOpen(true);
   };
 
   const handleToggleStatus = (id: number) => {
@@ -89,10 +139,26 @@ const ChatbotList = () => {
   };
 
   const handleDeleteBot = (id: number) => {
+    const bot = bots.find(b => b.id === id);
     setBots(bots.filter(bot => bot.id !== id));
     toast({
       title: "Chatbot excluído",
-      description: "O chatbot foi removido com sucesso.",
+      description: `${bot?.name} foi removido com sucesso.`,
+    });
+  };
+
+  const handleCreateFlow = (bot: Chatbot) => {
+    toast({
+      title: "Criar fluxo",
+      description: `Redirecionando para criar fluxo para ${bot.name}...`,
+    });
+    navigate("/dashboard/flow-map");
+  };
+
+  const handleViewBot = (bot: Chatbot) => {
+    toast({
+      title: "Visualizar chatbot",
+      description: `Abrindo detalhes de ${bot.name}...`,
     });
   };
 
@@ -129,13 +195,13 @@ const ChatbotList = () => {
                   <Input
                     id="name"
                     placeholder="Ex: Atendimento Comercial"
-                    value={newBot.name}
-                    onChange={(e) => setNewBot({ ...newBot, name: e.target.value })}
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
-                  <Select value={newBot.type} onValueChange={(value) => setNewBot({ ...newBot, type: value })}>
+                  <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -153,14 +219,20 @@ const ChatbotList = () => {
                   <Textarea
                     id="description"
                     placeholder="Descreva a função deste chatbot..."
-                    value={newBot.description}
-                    onChange={(e) => setNewBot({ ...newBot, description: e.target.value })}
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
                   />
                 </div>
-                <Button onClick={handleCreateBot} className="w-full">
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                  Cancelar
+                </Button>
+                <Button onClick={handleCreateBot}>
                   Criar Chatbot
                 </Button>
-              </div>
+              </DialogFooter>
             </DialogContent>
           </Dialog>
         </div>
@@ -226,8 +298,8 @@ const ChatbotList = () => {
                           <MoreVertical className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => openEditDialog(bot)}>
                           <Edit className="mr-2 h-4 w-4" />
                           Editar
                         </DropdownMenuItem>
@@ -244,6 +316,10 @@ const ChatbotList = () => {
                             </>
                           )}
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCreateFlow(bot)}>
+                          <GitBranch className="mr-2 h-4 w-4" />
+                          Criar Fluxo
+                        </DropdownMenuItem>
                         <DropdownMenuItem 
                           onClick={() => handleDeleteBot(bot.id)}
                           className="text-destructive"
@@ -257,9 +333,32 @@ const ChatbotList = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Mensagens processadas</span>
-                  <span className="font-semibold">{bot.messages}</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>Mensagens processadas</span>
+                    <span className="font-semibold">{bot.messages}</span>
+                  </div>
+                  {bot.description && (
+                    <p className="text-xs text-muted-foreground">{bot.description}</p>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="flex-1"
+                      onClick={() => handleCreateFlow(bot)}
+                    >
+                      <GitBranch className="mr-2 h-4 w-4" />
+                      Criar Fluxo
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleViewBot(bot)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -281,6 +380,60 @@ const ChatbotList = () => {
             </div>
           </Card>
         )}
+
+        {/* Edit Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Editar Chatbot</DialogTitle>
+              <DialogDescription>
+                Atualize as informações do seu chatbot
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Nome do Chatbot</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-type">Tipo</Label>
+                <Select value={formData.type} onValueChange={(value) => setFormData({ ...formData, type: value })}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {types.map((type) => (
+                      <SelectItem key={type} value={type}>
+                        {type}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Descrição</Label>
+                <Textarea
+                  id="edit-description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={3}
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleEditBot}>
+                Salvar Alterações
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );
