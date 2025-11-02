@@ -126,6 +126,236 @@ export default function NodeConfigPanel({ node, onClose, onUpdate }: NodeConfigP
           </>
         )}
 
+        {node.type === 'delay' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="delayType">Tipo de Espera</Label>
+              <Select value={String(node.data.delayType || 'seconds')} onValueChange={(value) => handleUpdate('delayType', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="seconds">Segundos</SelectItem>
+                  <SelectItem value="minutes">Minutos</SelectItem>
+                  <SelectItem value="hours">Horas</SelectItem>
+                  <SelectItem value="days">Dias</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="delayValue">Tempo</Label>
+              <Input
+                id="delayValue"
+                type="number"
+                placeholder="5"
+                value={String(node.data.delayValue || '')}
+                onChange={(e) => handleUpdate('delayValue', e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
+        {node.type === 'webhook' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="webhookUrl">URL do Webhook</Label>
+              <Input
+                id="webhookUrl"
+                placeholder="https://..."
+                value={String(node.data.webhookUrl || '')}
+                onChange={(e) => handleUpdate('webhookUrl', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhookMethod">Método</Label>
+              <Select value={String(node.data.webhookMethod || 'POST')} onValueChange={(value) => handleUpdate('webhookMethod', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="webhookBody">Body (JSON)</Label>
+              <Textarea
+                id="webhookBody"
+                placeholder='{"key": "value"}'
+                value={String(node.data.webhookBody || '')}
+                onChange={(e) => handleUpdate('webhookBody', e.target.value)}
+                rows={4}
+              />
+            </div>
+          </>
+        )}
+
+        {node.type === 'input' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="inputVariable">Nome da Variável</Label>
+              <Input
+                id="inputVariable"
+                placeholder="Ex: nome_usuario"
+                value={String(node.data.inputVariable || '')}
+                onChange={(e) => handleUpdate('inputVariable', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inputType">Tipo de Entrada</Label>
+              <Select value={String(node.data.inputType || 'text')} onValueChange={(value) => handleUpdate('inputType', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">Texto</SelectItem>
+                  <SelectItem value="number">Número</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="phone">Telefone</SelectItem>
+                  <SelectItem value="date">Data</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inputPrompt">Mensagem de Solicitação</Label>
+              <Textarea
+                id="inputPrompt"
+                placeholder="Digite sua pergunta ao usuário..."
+                value={String(node.data.inputPrompt || '')}
+                onChange={(e) => handleUpdate('inputPrompt', e.target.value)}
+                rows={3}
+              />
+            </div>
+          </>
+        )}
+
+        {node.type === 'http' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="httpUrl">URL</Label>
+              <Input
+                id="httpUrl"
+                placeholder="https://api.example.com/endpoint"
+                value={String(node.data.url || '')}
+                onChange={(e) => handleUpdate('url', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="httpMethod">Método HTTP</Label>
+              <Select value={String(node.data.method || 'GET')} onValueChange={(value) => handleUpdate('method', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="GET">GET</SelectItem>
+                  <SelectItem value="POST">POST</SelectItem>
+                  <SelectItem value="PUT">PUT</SelectItem>
+                  <SelectItem value="PATCH">PATCH</SelectItem>
+                  <SelectItem value="DELETE">DELETE</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="httpHeaders">Headers (JSON)</Label>
+              <Textarea
+                id="httpHeaders"
+                placeholder='{"Authorization": "Bearer token"}'
+                value={String(node.data.headers || '')}
+                onChange={(e) => handleUpdate('headers', e.target.value)}
+                rows={3}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="httpBody">Body (JSON)</Label>
+              <Textarea
+                id="httpBody"
+                placeholder='{"data": "value"}'
+                value={String(node.data.body || '')}
+                onChange={(e) => handleUpdate('body', e.target.value)}
+                rows={3}
+              />
+            </div>
+          </>
+        )}
+
+        {node.type === 'variable' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="variableName">Nome da Variável</Label>
+              <Input
+                id="variableName"
+                placeholder="Ex: contador"
+                value={String(node.data.variableName || '')}
+                onChange={(e) => handleUpdate('variableName', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="variableValue">Valor</Label>
+              <Input
+                id="variableValue"
+                placeholder="Ex: 0"
+                value={String(node.data.variableValue || '')}
+                onChange={(e) => handleUpdate('variableValue', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="variableOperation">Operação</Label>
+              <Select value={String(node.data.variableOperation || 'set')} onValueChange={(value) => handleUpdate('variableOperation', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="set">Definir (=)</SelectItem>
+                  <SelectItem value="add">Adicionar (+=)</SelectItem>
+                  <SelectItem value="subtract">Subtrair (-=)</SelectItem>
+                  <SelectItem value="multiply">Multiplicar (*=)</SelectItem>
+                  <SelectItem value="divide">Dividir (/=)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
+        )}
+
+        {node.type === 'loop' && (
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="loopType">Tipo de Loop</Label>
+              <Select value={String(node.data.loopType || 'fixed')} onValueChange={(value) => handleUpdate('loopType', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Número Fixo</SelectItem>
+                  <SelectItem value="condition">Condição</SelectItem>
+                  <SelectItem value="array">Iterar Array</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="iterations">Iterações</Label>
+              <Input
+                id="iterations"
+                type="number"
+                placeholder="3"
+                value={String(node.data.iterations || '')}
+                onChange={(e) => handleUpdate('iterations', e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="loopVariable">Variável do Loop</Label>
+              <Input
+                id="loopVariable"
+                placeholder="Ex: i"
+                value={String(node.data.loopVariable || '')}
+                onChange={(e) => handleUpdate('loopVariable', e.target.value)}
+              />
+            </div>
+          </>
+        )}
+
         {(node.type === 'start' || node.type === 'end') && (
           <div className="space-y-2">
             <Label htmlFor="label">Nome do Nó</Label>
