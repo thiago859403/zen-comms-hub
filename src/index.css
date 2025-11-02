@@ -110,3 +110,32 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* React Flow Styles */
+.react-flow__node {
+  cursor: pointer;
+}
+
+.react-flow__edge-path {
+  stroke-width: 2;
+}
+
+.react-flow__handle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.react-flow__controls {
+  box-shadow: var(--shadow-elevated);
+}
+
+.react-flow__controls-button {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+.react-flow__controls-button:hover {
+  background-color: hsl(var(--muted));
+}

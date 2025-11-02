@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { GitBranch, Plus, Play, Trash2, Eye } from "lucide-react";
+import { GitBranch, Plus, Play, Trash2, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import FlowBuilder from "@/components/flowBuilder/FlowBuilder";
 
 interface Flow {
   id: string;
@@ -32,6 +33,7 @@ const FlowMap = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedFlow, setSelectedFlow] = useState<Flow | null>(null);
+  const [editingFlowId, setEditingFlowId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     chatbot: "",
@@ -120,12 +122,45 @@ const FlowMap = () => {
     setIsEditDialogOpen(true);
   };
 
-  const handleViewFlow = (flow: Flow) => {
-    toast({
-      title: "Visualizando fluxo",
-      description: `Abrindo editor visual para "${flow.name}"`,
-    });
+  const handleViewFlow = (flowId: string) => {
+    setEditingFlowId(flowId);
   };
+
+  const handleBackToList = () => {
+    setEditingFlowId(null);
+  };
+
+  if (editingFlowId) {
+    const flow = flows.find(f => f.id === editingFlowId);
+    return (
+      <DashboardLayout>
+        <div className="h-[calc(100vh-4rem)] flex flex-col">
+          <div className="p-4 border-b border-border bg-card flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={handleBackToList}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Voltar
+              </Button>
+              <div>
+                <h2 className="text-xl font-semibold text-foreground">{flow?.name}</h2>
+                <p className="text-sm text-muted-foreground">{flow?.chatbot}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {flow?.status === "draft" && (
+                <span className="px-3 py-1 bg-orange-500/10 text-orange-500 text-sm rounded-full">
+                  Rascunho
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex-1">
+            <FlowBuilder />
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
@@ -264,11 +299,11 @@ const FlowMap = () => {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handleViewFlow(flow)}>
-                      <Eye className="h-4 w-4" />
+                    <Button variant="default" size="sm" onClick={() => handleViewFlow(flow.id)}>
+                      Abrir Editor
                     </Button>
                     <Button variant="outline" size="sm" onClick={() => openEditDialog(flow)}>
-                      Editar
+                      Configurar
                     </Button>
                     <Button variant="ghost" size="sm" onClick={() => handleDeleteFlow(flow.id)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
