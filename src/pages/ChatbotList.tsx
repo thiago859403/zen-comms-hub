@@ -17,6 +17,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
+import { chatbotSchema } from "@/lib/validations";
+import { z } from "zod";
 
 interface Chatbot {
   id: number;
@@ -35,6 +37,7 @@ const ChatbotList = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedBot, setSelectedBot] = useState<Chatbot | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const [bots, setBots] = useState<Chatbot[]>([
@@ -61,58 +64,88 @@ const ChatbotList = () => {
   });
 
   const handleCreateBot = () => {
-    if (!formData.name) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um nome para o chatbot",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const bot: Chatbot = {
-      id: bots.length + 1,
-      name: formData.name,
-      type: formData.type,
-      status: "Ativo",
-      messages: "0",
-      description: formData.description,
-    };
-
-    setBots([...bots, bot]);
-    setIsCreateDialogOpen(false);
-    setFormData({ name: "", type: "Vendas", description: "" });
+    setErrors({});
     
-    toast({
-      title: "Chatbot criado!",
-      description: `${formData.name} foi criado com sucesso.`,
-    });
+    try {
+      const validatedData = chatbotSchema.parse(formData);
+
+      const bot: Chatbot = {
+        id: bots.length + 1,
+        name: validatedData.name,
+        type: formData.type,
+        status: "Ativo",
+        messages: "0",
+        description: validatedData.description,
+      };
+
+      setBots([...bots, bot]);
+      setIsCreateDialogOpen(false);
+      setFormData({ name: "", type: "Vendas", description: "" });
+      setErrors({});
+      
+      toast({
+        title: "Chatbot criado!",
+        description: `${validatedData.name} foi criado com sucesso.`,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        
+        toast({
+          title: "Erro de validação",
+          description: "Por favor, corrija os erros no formulário.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const handleEditBot = () => {
-    if (!selectedBot || !formData.name) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira um nome para o chatbot",
-        variant: "destructive",
-      });
-      return;
-    }
+    setErrors({});
+    
+    if (!selectedBot) return;
+    
+    try {
+      const validatedData = chatbotSchema.parse(formData);
 
-    setBots(bots.map(bot => 
-      bot.id === selectedBot.id 
-        ? { ...bot, name: formData.name, type: formData.type, description: formData.description }
-        : bot
-    ));
-    
-    setIsEditDialogOpen(false);
-    setSelectedBot(null);
-    setFormData({ name: "", type: "Vendas", description: "" });
-    
-    toast({
-      title: "Chatbot atualizado!",
-      description: "As alterações foram salvas com sucesso.",
-    });
+      setBots(bots.map(bot => 
+        bot.id === selectedBot.id 
+          ? { ...bot, name: validatedData.name, type: formData.type, description: validatedData.description }
+          : bot
+      ));
+      
+      setIsEditDialogOpen(false);
+      setSelectedBot(null);
+      setFormData({ name: "", type: "Vendas", description: "" });
+      setErrors({});
+      
+      toast({
+        title: "Chatbot atualizado!",
+        description: "As alterações foram salvas com sucesso.",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        
+        toast({
+          title: "Erro de validação",
+          description: "Por favor, corrija os erros no formulário.",
+          variant: "destructive",
+        });
+      }
+    }
   };
 
   const openEditDialog = (bot: Chatbot) => {
@@ -198,6 +231,7 @@ const ChatbotList = () => {
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
+                  {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="type">Tipo</Label>
@@ -223,6 +257,7 @@ const ChatbotList = () => {
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     rows={3}
                   />
+                  {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
                 </div>
               </div>
               <DialogFooter>
@@ -398,6 +433,7 @@ const ChatbotList = () => {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 />
+                {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-type">Tipo</Label>
@@ -422,6 +458,7 @@ const ChatbotList = () => {
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
                 />
+                {errors.description && <p className="text-sm text-destructive">{errors.description}</p>}
               </div>
             </div>
             <DialogFooter>

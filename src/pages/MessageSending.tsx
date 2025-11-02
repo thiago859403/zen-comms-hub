@@ -9,9 +9,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Checkbox } from "@/components/ui/checkbox";
+import { messageSchema } from "@/lib/validations";
+import { z } from "zod";
 
 const MessageSending = () => {
   const { toast } = useToast();
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState({
     recipients: "all",
     template: "",
@@ -23,29 +26,48 @@ const MessageSending = () => {
   const [scheduleNow, setScheduleNow] = useState(true);
 
   const handleSendMessage = () => {
-    if (!message.content) {
-      toast({
-        title: "Erro",
-        description: "Por favor, insira uma mensagem",
-        variant: "destructive",
+    setErrors({});
+    
+    try {
+      const validatedData = messageSchema.parse({
+        recipients: message.recipients,
+        message: message.content,
+        scheduledDate: message.scheduleDate,
+        scheduledTime: message.scheduleTime,
       });
-      return;
+
+      toast({
+        title: "Mensagem enviada!",
+        description: scheduleNow 
+          ? "Sua mensagem está sendo enviada agora."
+          : "Sua mensagem foi agendada com sucesso.",
+      });
+
+      setMessage({
+        recipients: "all",
+        template: "",
+        content: "",
+        scheduleDate: "",
+        scheduleTime: "",
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            const fieldName = err.path[0].toString() === 'message' ? 'content' : err.path[0].toString();
+            fieldErrors[fieldName] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        
+        toast({
+          title: "Erro de validação",
+          description: "Por favor, corrija os erros no formulário.",
+          variant: "destructive",
+        });
+      }
     }
-
-    toast({
-      title: "Mensagem enviada!",
-      description: scheduleNow 
-        ? "Sua mensagem está sendo enviada agora."
-        : "Sua mensagem foi agendada com sucesso.",
-    });
-
-    setMessage({
-      recipients: "all",
-      template: "",
-      content: "",
-      scheduleDate: "",
-      scheduleTime: "",
-    });
   };
 
   return (
@@ -137,6 +159,7 @@ const MessageSending = () => {
                 onChange={(e) => setMessage({ ...message, content: e.target.value })}
                 rows={6}
               />
+              {errors.content && <p className="text-sm text-destructive">{errors.content}</p>}
               <p className="text-xs text-muted-foreground">
                 Use variáveis: {"{{nome}}"}, {"{{empresa}}"}, {"{{produto}}"}
               </p>

@@ -13,6 +13,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { contactSchema } from "@/lib/validations";
+import { z } from "zod";
 
 interface AddContactDialogProps {
   onContactAdded: (contact: any) => void;
@@ -24,41 +26,55 @@ export function AddContactDialog({ onContactAdded }: AddContactDialogProps) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [tags, setTags] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
     
-    if (!name || !phone) {
+    try {
+      const validatedData = contactSchema.parse({ name, phone, email, tags });
+
+      const newContact = {
+        id: Date.now(),
+        name: validatedData.name,
+        phone: validatedData.phone,
+        email: validatedData.email,
+        tags: validatedData.tags ? validatedData.tags.split(",").map(t => t.trim()).filter(t => t) : [],
+        lastContact: "Agora",
+      };
+
+      onContactAdded(newContact);
+      
       toast({
-        title: "Erro",
-        description: "Nome e telefone são obrigatórios",
-        variant: "destructive",
+        title: "Sucesso",
+        description: "Contato adicionado com sucesso",
       });
-      return;
+
+      setOpen(false);
+      setName("");
+      setPhone("");
+      setEmail("");
+      setTags("");
+      setErrors({});
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0].toString()] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+        
+        toast({
+          title: "Erro de validação",
+          description: "Por favor, corrija os erros no formulário.",
+          variant: "destructive",
+        });
+      }
     }
-
-    const newContact = {
-      id: Date.now(),
-      name,
-      phone,
-      email,
-      tags: tags.split(",").map(t => t.trim()).filter(t => t),
-      lastContact: "Agora",
-    };
-
-    onContactAdded(newContact);
-    
-    toast({
-      title: "Sucesso",
-      description: "Contato adicionado com sucesso",
-    });
-
-    setOpen(false);
-    setName("");
-    setPhone("");
-    setEmail("");
-    setTags("");
   };
 
   return (
@@ -86,6 +102,7 @@ export function AddContactDialog({ onContactAdded }: AddContactDialogProps) {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nome completo"
               />
+              {errors.name && <p className="text-sm text-destructive">{errors.name}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="phone">Telefone *</Label>
@@ -93,8 +110,9 @@ export function AddContactDialog({ onContactAdded }: AddContactDialogProps) {
                 id="phone"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                placeholder="+55 11 99999-9999"
+                placeholder="+5511987654321"
               />
+              {errors.phone && <p className="text-sm text-destructive">{errors.phone}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -105,6 +123,7 @@ export function AddContactDialog({ onContactAdded }: AddContactDialogProps) {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="email@exemplo.com"
               />
+              {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
             </div>
             <div className="grid gap-2">
               <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
@@ -114,6 +133,7 @@ export function AddContactDialog({ onContactAdded }: AddContactDialogProps) {
                 onChange={(e) => setTags(e.target.value)}
                 placeholder="Cliente, VIP"
               />
+              {errors.tags && <p className="text-sm text-destructive">{errors.tags}</p>}
             </div>
           </div>
           <DialogFooter>
