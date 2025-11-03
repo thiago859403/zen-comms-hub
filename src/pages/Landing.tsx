@@ -3,6 +3,8 @@ import { Card } from "@/components/ui/card";
 import { MessageSquare, Users, BarChart3, Zap, CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-image.jpg";
+import nuviaLogo from "@/assets/nuvia-logo-full.png";
+import nuviaIcon from "@/assets/nuvia-icon.png";
 
 const Landing = () => {
   return (
@@ -11,10 +13,9 @@ const Landing = () => {
       <header className="bg-[hsl(250_50%_10%)] text-white sticky top-0 z-50 border-b border-white/10">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-8">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-8 w-8 text-primary" />
-              <span className="text-xl font-bold">Nuvia Customer Cloud</span>
-            </div>
+            <Link to="/" className="flex items-center">
+              <img src={nuviaLogo} alt="Nuvia Customer Cloud" className="h-10" />
+            </Link>
             <nav className="hidden lg:flex items-center gap-6">
               <a href="#features" className="text-sm hover:text-primary transition-colors">
                 Customer Cloud
@@ -194,9 +195,8 @@ const Landing = () => {
         <div className="container mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <MessageSquare className="h-6 w-6 text-primary" />
-                <span className="font-bold">Nuvia Customer Cloud</span>
+              <div className="mb-4">
+                <img src={nuviaLogo} alt="Nuvia Customer Cloud" className="h-8" />
               </div>
               <p className="text-sm text-muted-foreground">
                 Plataforma completa de automação para WhatsApp Business.
