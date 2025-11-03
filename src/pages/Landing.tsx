@@ -3,8 +3,8 @@ import { Card } from "@/components/ui/card";
 import { MessageSquare, Users, BarChart3, Zap, CheckCircle2, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-image.jpg";
-import nuviaLogo from "@/assets/nuvia-logo-full.png";
-import nuviaIcon from "@/assets/nuvia-icon.png";
+import nuviaLogo from "@/assets/nuvia-logo-transparent.png";
+import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
 
 const Landing = () => {
   return (

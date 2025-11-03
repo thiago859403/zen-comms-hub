@@ -8,7 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import nuviaIcon from "@/assets/nuvia-icon.png";
+import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -144,7 +144,7 @@ const DashboardLayout = ({
         {/* Logo Area - Dark */}
         <div className="bg-[#1a1a1a] h-16 flex items-center px-4 border-b border-gray-800">
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img src={nuviaIcon} alt="Nuvia Customer Cloud" className="h-8 w-8 shrink-0" />
+            <img src={nuviaIcon} alt="Nuvia Customer Cloud" className="h-12 w-12 shrink-0" />
             {isExpanded && <span className="text-white font-semibold tracking-wide whitespace-nowrap">Nuvia
           </span>}
           </Link>
