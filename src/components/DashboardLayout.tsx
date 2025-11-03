@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, HelpCircle, Bell, FileStack } from "lucide-react";
+import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, HelpCircle, Bell, FileStack, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -74,6 +74,11 @@ const menuItems: MenuItem[] = [{
   icon: BarChart3,
   label: "Análises",
   path: "/dashboard/analytics"
+}, {
+  icon: Shield,
+  label: "Admin",
+  path: "/dashboard/admin",
+  badge: "Admin"
 }];
 const DashboardLayout = ({
   children

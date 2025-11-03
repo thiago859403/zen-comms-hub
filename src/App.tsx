@@ -11,6 +11,7 @@ import Contacts from "./pages/Contacts";
 import Chats from "./pages/Chats";
 import Templates from "./pages/Templates";
 import Settings from "./pages/Settings";
+import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
 import MessageSending from "./pages/MessageSending";
 import Announcements from "./pages/Announcements";
@@ -35,6 +36,7 @@ const App = () => (
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/dashboard/admin" element={<Admin />} />
           <Route path="/dashboard/campaigns" element={<Campaigns />} />
           <Route path="/dashboard/contacts" element={<Contacts />} />
           <Route path="/dashboard/chats" element={<Chats />} />
