@@ -2,13 +2,16 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, HelpCircle, Bell, FileStack, Shield } from "lucide-react";
+import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, FileStack, Shield, Lightbulb } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
 import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
+import ChatAssistant from "./ChatAssistant";
+import HelpDropdown from "./HelpDropdown";
+import NotificationsPanel from "./NotificationsPanel";
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 interface DashboardLayoutProps {
   children: ReactNode;
 }
@@ -92,20 +95,7 @@ const DashboardLayout = ({
   }>({
     "Chatbot": true // Default open
   });
-
-  const handleHelp = () => {
-    toast({
-      title: "Central de Ajuda",
-      description: "A central de ajuda será aberta em breve.",
-    });
-  };
-
-  const handleNotifications = () => {
-    toast({
-      title: "Notificações",
-      description: "Você tem 3 notificações não lidas.",
-    });
-  };
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const handleFiles = () => {
     toast({
@@ -227,43 +217,47 @@ const DashboardLayout = ({
             
             {/* Right side icons and user menu */}
             <div className="flex items-center gap-2 ml-auto">
-              {/* Help/Support Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-white hover:bg-white/10" 
-                title="Ajuda"
-                onClick={handleHelp}
-              >
-                <HelpCircle className="h-5 w-5" />
-              </Button>
-              
-              {/* Notifications Icon with Badge */}
-              <div className="relative">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="text-white hover:bg-white/10" 
-                  title="Notificações"
-                  onClick={handleNotifications}
-                >
-                  <Bell className="h-5 w-5" />
-                </Button>
-                <Badge variant="destructive" className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                  3
-                </Badge>
-              </div>
-              
-              {/* Files/Documents Icon */}
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="text-white hover:bg-white/10" 
-                title="Arquivos"
-                onClick={handleFiles}
-              >
-                <FileStack className="h-5 w-5" />
-              </Button>
+              <TooltipProvider>
+                {/* Chat Assistant Icon */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-white hover:bg-white/10" 
+                      onClick={() => setIsChatOpen(!isChatOpen)}
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Assistente virtual</p>
+                  </TooltipContent>
+                </Tooltip>
+
+                {/* Help/Support Dropdown */}
+                <HelpDropdown />
+                
+                {/* Notifications Panel */}
+                <NotificationsPanel />
+                
+                {/* Suggestions Box Icon */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="text-white hover:bg-white/10"
+                      onClick={() => navigate("/dashboard/suggestions")}
+                    >
+                      <Lightbulb className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Caixa de sugestões</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               
               {/* Organization Dropdown */}
               <DropdownMenu>
@@ -331,6 +325,9 @@ const DashboardLayout = ({
           {children}
         </main>
       </div>
+
+      {/* Chat Assistant */}
+      <ChatAssistant isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>;
 };
 export default DashboardLayout;

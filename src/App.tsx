@@ -23,6 +23,7 @@ import Conversations from "./pages/Conversations";
 import FlowMap from "./pages/FlowMap";
 import SpecialistAgents from "./pages/SpecialistAgents";
 import Analytics from "./pages/Analytics";
+import Suggestions from "./pages/Suggestions";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ const App = () => (
           <Route path="/dashboard/flow-map" element={<FlowMap />} />
           <Route path="/dashboard/specialist-agents" element={<SpecialistAgents />} />
           <Route path="/dashboard/analytics" element={<Analytics />} />
+          <Route path="/dashboard/suggestions" element={<Suggestions />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
