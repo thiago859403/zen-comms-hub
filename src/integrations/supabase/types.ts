@@ -14,14 +14,46 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_activity_logs: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          target_user_id: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          target_user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company: string | null
           created_at: string | null
           email: string
+          failed_login_attempts: number | null
           full_name: string | null
           id: string
           last_login: string | null
+          locked_until: string | null
           plan: string | null
           status: string | null
           updated_at: string | null
@@ -30,9 +62,11 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           email: string
+          failed_login_attempts?: number | null
           full_name?: string | null
           id: string
           last_login?: string | null
+          locked_until?: string | null
           plan?: string | null
           status?: string | null
           updated_at?: string | null
@@ -41,12 +75,41 @@ export type Database = {
           company?: string | null
           created_at?: string | null
           email?: string
+          failed_login_attempts?: number | null
           full_name?: string | null
           id?: string
           last_login?: string | null
+          locked_until?: string | null
           plan?: string | null
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      two_factor_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id?: string
         }
         Relationships: []
       }
