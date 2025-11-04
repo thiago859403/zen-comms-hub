@@ -166,6 +166,35 @@ serve(async (req) => {
                 conversation_id: conversation.id,
                 message_id: message.id
               });
+
+              // Process with bot
+              try {
+                const botResponse = await fetch(
+                  `${Deno.env.get('SUPABASE_URL')}/functions/v1/bot-process-message`,
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      conversation_id: conversation.id,
+                      message: messageContent,
+                      contact_name: contactName,
+                      contact_phone: contactPhone
+                    })
+                  }
+                );
+
+                if (botResponse.ok) {
+                  const botData = await botResponse.json();
+                  console.log('Bot processed message:', botData);
+                } else {
+                  console.error('Bot processing failed:', await botResponse.text());
+                }
+              } catch (botError) {
+                console.error('Error calling bot processor:', botError);
+              }
             }
           }
 

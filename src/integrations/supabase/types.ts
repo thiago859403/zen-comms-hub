@@ -88,6 +88,136 @@ export type Database = {
           },
         ]
       }
+      bot_config: {
+        Row: {
+          ai_instructions: string | null
+          ai_personality: string | null
+          auto_close_after_minutes: number | null
+          bot_mode: string | null
+          created_at: string | null
+          fallback_to_human: boolean | null
+          id: string
+          knowledge_base_enabled: boolean | null
+          menu_message: string | null
+          offline_message: string | null
+          transfer_message: string | null
+          updated_at: string | null
+          user_id: string
+          welcome_message: string | null
+        }
+        Insert: {
+          ai_instructions?: string | null
+          ai_personality?: string | null
+          auto_close_after_minutes?: number | null
+          bot_mode?: string | null
+          created_at?: string | null
+          fallback_to_human?: boolean | null
+          id?: string
+          knowledge_base_enabled?: boolean | null
+          menu_message?: string | null
+          offline_message?: string | null
+          transfer_message?: string | null
+          updated_at?: string | null
+          user_id: string
+          welcome_message?: string | null
+        }
+        Update: {
+          ai_instructions?: string | null
+          ai_personality?: string | null
+          auto_close_after_minutes?: number | null
+          bot_mode?: string | null
+          created_at?: string | null
+          fallback_to_human?: boolean | null
+          id?: string
+          knowledge_base_enabled?: boolean | null
+          menu_message?: string | null
+          offline_message?: string | null
+          transfer_message?: string | null
+          updated_at?: string | null
+          user_id?: string
+          welcome_message?: string | null
+        }
+        Relationships: []
+      }
+      bot_flow_triggers: {
+        Row: {
+          active: boolean | null
+          bot_config_id: string
+          created_at: string | null
+          flow_name: string
+          id: string
+          priority: number | null
+          trigger_type: string | null
+          trigger_value: string | null
+        }
+        Insert: {
+          active?: boolean | null
+          bot_config_id: string
+          created_at?: string | null
+          flow_name: string
+          id?: string
+          priority?: number | null
+          trigger_type?: string | null
+          trigger_value?: string | null
+        }
+        Update: {
+          active?: boolean | null
+          bot_config_id?: string
+          created_at?: string | null
+          flow_name?: string
+          id?: string
+          priority?: number | null
+          trigger_type?: string | null
+          trigger_value?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_flow_triggers_bot_config_id_fkey"
+            columns: ["bot_config_id"]
+            isOneToOne: false
+            referencedRelation: "bot_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_keywords: {
+        Row: {
+          active: boolean | null
+          bot_config_id: string
+          created_at: string | null
+          id: string
+          keyword: string
+          priority: number | null
+          response: string
+        }
+        Insert: {
+          active?: boolean | null
+          bot_config_id: string
+          created_at?: string | null
+          id?: string
+          keyword: string
+          priority?: number | null
+          response: string
+        }
+        Update: {
+          active?: boolean | null
+          bot_config_id?: string
+          created_at?: string | null
+          id?: string
+          keyword?: string
+          priority?: number | null
+          response?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_keywords_bot_config_id_fkey"
+            columns: ["bot_config_id"]
+            isOneToOne: false
+            referencedRelation: "bot_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       conversation_audit: {
         Row: {
           action: string
@@ -125,6 +255,50 @@ export type Database = {
             foreignKeyName: "conversation_audit_conversation_id_fkey"
             columns: ["conversation_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_context: {
+        Row: {
+          bot_state: string | null
+          conversation_id: string
+          created_at: string | null
+          current_intent: string | null
+          id: string
+          last_interaction_at: string | null
+          message_history: Json | null
+          updated_at: string | null
+          user_data: Json | null
+        }
+        Insert: {
+          bot_state?: string | null
+          conversation_id: string
+          created_at?: string | null
+          current_intent?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          message_history?: Json | null
+          updated_at?: string | null
+          user_data?: Json | null
+        }
+        Update: {
+          bot_state?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          current_intent?: string | null
+          id?: string
+          last_interaction_at?: string | null
+          message_history?: Json | null
+          updated_at?: string | null
+          user_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_context_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: true
             referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
@@ -269,6 +443,50 @@ export type Database = {
             columns: ["queue_id"]
             isOneToOne: false
             referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      flow_executions: {
+        Row: {
+          completed_at: string | null
+          conversation_id: string
+          created_at: string | null
+          current_node: string | null
+          flow_name: string
+          id: string
+          started_at: string | null
+          status: string | null
+          variables: Json | null
+        }
+        Insert: {
+          completed_at?: string | null
+          conversation_id: string
+          created_at?: string | null
+          current_node?: string | null
+          flow_name: string
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          completed_at?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          current_node?: string | null
+          flow_name?: string
+          id?: string
+          started_at?: string | null
+          status?: string | null
+          variables?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flow_executions_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
             referencedColumns: ["id"]
           },
         ]

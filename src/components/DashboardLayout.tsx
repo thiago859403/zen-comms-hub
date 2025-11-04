@@ -73,8 +73,11 @@ const menuItems: MenuItem[] = [{
   label: "WhatsApp",
   hasSubmenu: true,
   submenu: [{
-    label: "Configuração",
+    label: "Configuração API",
     path: "/dashboard/whatsapp-config"
+  }, {
+    label: "Config. do Bot",
+    path: "/dashboard/bot-config"
   }, {
     label: "Chat Inbox",
     path: "/dashboard/chat-inbox"
