@@ -25,6 +25,8 @@ import FlowMap from "./pages/FlowMap";
 import SpecialistAgents from "./pages/SpecialistAgents";
 import Analytics from "./pages/Analytics";
 import Suggestions from "./pages/Suggestions";
+import WhatsAppConfig from "./pages/WhatsAppConfig";
+import ChatInbox from "./pages/ChatInbox";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +58,8 @@ const App = () => (
           <Route path="/dashboard/specialist-agents" element={<SpecialistAgents />} />
           <Route path="/dashboard/analytics" element={<Analytics />} />
           <Route path="/dashboard/suggestions" element={<Suggestions />} />
+          <Route path="/dashboard/whatsapp-config" element={<WhatsAppConfig />} />
+          <Route path="/dashboard/chat-inbox" element={<ChatInbox />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

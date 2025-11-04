@@ -44,6 +44,321 @@ export type Database = {
         }
         Relationships: []
       }
+      agents: {
+        Row: {
+          created_at: string | null
+          current_conversations: number | null
+          id: string
+          max_conversations: number | null
+          profile_id: string
+          role: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          current_conversations?: number | null
+          id?: string
+          max_conversations?: number | null
+          profile_id: string
+          role?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          current_conversations?: number | null
+          id?: string
+          max_conversations?: number | null
+          profile_id?: string
+          role?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agents_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_audit: {
+        Row: {
+          action: string
+          agent_id: string | null
+          conversation_id: string
+          created_at: string | null
+          details: Json | null
+          id: string
+        }
+        Insert: {
+          action: string
+          agent_id?: string | null
+          conversation_id: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          agent_id?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          details?: Json | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_audit_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_audit_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_metrics: {
+        Row: {
+          agent_messages_count: number | null
+          conversation_id: string
+          created_at: string | null
+          first_response_time: number | null
+          id: string
+          messages_count: number | null
+          resolution_time: number | null
+          satisfaction_feedback: string | null
+          satisfaction_score: number | null
+        }
+        Insert: {
+          agent_messages_count?: number | null
+          conversation_id: string
+          created_at?: string | null
+          first_response_time?: number | null
+          id?: string
+          messages_count?: number | null
+          resolution_time?: number | null
+          satisfaction_feedback?: string | null
+          satisfaction_score?: number | null
+        }
+        Update: {
+          agent_messages_count?: number | null
+          conversation_id?: string
+          created_at?: string | null
+          first_response_time?: number | null
+          id?: string
+          messages_count?: number | null
+          resolution_time?: number | null
+          satisfaction_feedback?: string | null
+          satisfaction_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_metrics_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversation_tags: {
+        Row: {
+          conversation_id: string
+          tag_id: string
+        }
+        Insert: {
+          conversation_id: string
+          tag_id: string
+        }
+        Update: {
+          conversation_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_tags_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          assigned_agent_id: string | null
+          contact_email: string | null
+          contact_name: string
+          contact_phone: string
+          created_at: string | null
+          first_response_at: string | null
+          id: string
+          last_message_at: string | null
+          metadata: Json | null
+          priority: string | null
+          queue_id: string | null
+          resolved_at: string | null
+          sla_breach: boolean | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_agent_id?: string | null
+          contact_email?: string | null
+          contact_name: string
+          contact_phone: string
+          created_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          queue_id?: string | null
+          resolved_at?: string | null
+          sla_breach?: boolean | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_agent_id?: string | null
+          contact_email?: string | null
+          contact_name?: string
+          contact_phone?: string
+          created_at?: string | null
+          first_response_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          metadata?: Json | null
+          priority?: string | null
+          queue_id?: string | null
+          resolved_at?: string | null
+          sla_breach?: boolean | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_assigned_agent_id_fkey"
+            columns: ["assigned_agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_queue_id_fkey"
+            columns: ["queue_id"]
+            isOneToOne: false
+            referencedRelation: "queues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_templates: {
+        Row: {
+          approved: boolean | null
+          category: string | null
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string
+          updated_at: string | null
+          variables: Json | null
+        }
+        Insert: {
+          approved?: boolean | null
+          category?: string | null
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Update: {
+          approved?: boolean | null
+          category?: string | null
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string
+          updated_at?: string | null
+          variables?: Json | null
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          media_url: string | null
+          message_type: string | null
+          metadata: Json | null
+          sender_id: string | null
+          sender_type: string
+          status: string | null
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type: string
+          status?: string | null
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          media_url?: string | null
+          message_type?: string | null
+          metadata?: Json | null
+          sender_id?: string | null
+          sender_type?: string
+          status?: string | null
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           company: string | null
@@ -83,6 +398,75 @@ export type Database = {
           plan?: string | null
           status?: string | null
           updated_at?: string | null
+        }
+        Relationships: []
+      }
+      queues: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+          priority: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          priority?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          priority?: number | null
+        }
+        Relationships: []
+      }
+      quick_replies: {
+        Row: {
+          content: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          shortcut: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          shortcut: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          shortcut?: string
+        }
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -128,6 +512,51 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_config: {
+        Row: {
+          access_token: string | null
+          business_account_id: string | null
+          connected_number: string | null
+          created_at: string | null
+          id: string
+          last_sync_at: string | null
+          permissions: Json | null
+          phone_number_id: string | null
+          status: string | null
+          updated_at: string | null
+          user_id: string
+          webhook_verify_token: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          business_account_id?: string | null
+          connected_number?: string | null
+          created_at?: string | null
+          id?: string
+          last_sync_at?: string | null
+          permissions?: Json | null
+          phone_number_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id: string
+          webhook_verify_token?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          business_account_id?: string | null
+          connected_number?: string | null
+          created_at?: string | null
+          id?: string
+          last_sync_at?: string | null
+          permissions?: Json | null
+          phone_number_id?: string | null
+          status?: string | null
+          updated_at?: string | null
+          user_id?: string
+          webhook_verify_token?: string | null
         }
         Relationships: []
       }

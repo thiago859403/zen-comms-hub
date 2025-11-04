@@ -2,7 +2,7 @@ import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, FileStack, Shield, Lightbulb } from "lucide-react";
+import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, FileStack, Shield, Lightbulb, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -67,6 +67,17 @@ const menuItems: MenuItem[] = [{
   }, {
     label: "Mapa de fluxos",
     path: "/dashboard/flow-map"
+  }]
+}, {
+  icon: Smartphone,
+  label: "WhatsApp",
+  hasSubmenu: true,
+  submenu: [{
+    label: "Configuração",
+    path: "/dashboard/whatsapp-config"
+  }, {
+    label: "Chat Inbox",
+    path: "/dashboard/chat-inbox"
   }]
 }, {
   icon: Sparkles,
