@@ -64,6 +64,55 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
+      // Verificar se existe algum admin no sistema
+      const { data: existingAdmins } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin")
+        .limit(1);
+
+      // Se não existe admin e as credenciais são as corretas, criar o primeiro admin
+      if ((!existingAdmins || existingAdmins.length === 0) && 
+          formData.username === "NuviaCloud" && 
+          formData.password === "26533xt3ef36et3e7dg34r743gh") {
+        
+        // Criar o usuário admin
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email: "admin@nuviacloud.com",
+          password: "26533xt3ef36et3e7dg34r743gh",
+          options: {
+            data: {
+              full_name: "NuviaCloud",
+              company: "Nuvia Cloud"
+            },
+            emailRedirectTo: `${window.location.origin}/dashboard/admin`
+          }
+        });
+
+        if (signUpError) throw signUpError;
+
+        if (signUpData.user) {
+          // Atualizar o perfil
+          await supabase
+            .from("profiles")
+            .update({
+              full_name: "NuviaCloud",
+              company: "Nuvia Cloud",
+              status: "active"
+            })
+            .eq("id", signUpData.user.id);
+
+          // Adicionar role de admin
+          await supabase
+            .from("user_roles")
+            .insert({ user_id: signUpData.user.id, role: "admin" });
+
+          toast.success("Usuário admin criado com sucesso! Faça login novamente.");
+          setLoading(false);
+          return;
+        }
+      }
+
       // Buscar usuário pelo username (usando email como username)
       const { data: profiles } = await supabase
         .from("profiles")
