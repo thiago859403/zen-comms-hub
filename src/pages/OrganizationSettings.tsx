@@ -187,7 +187,7 @@ const OrganizationSettings = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="w-full flex flex-nowrap items-center justify-center gap-2 rounded-lg bg-muted p-2 overflow-x-auto">
+          <TabsList className="w-full flex flex-nowrap items-center justify-center gap-2 rounded-lg bg-muted p-2">
             <TabsTrigger value="users" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <Users className="h-4 w-4" />
               <span>Usuários</span>
