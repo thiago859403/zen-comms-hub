@@ -88,10 +88,6 @@ const menuItems: MenuItem[] = [{
   label: "Admin",
   path: "/dashboard/admin",
   badge: "Admin"
-}, {
-  icon: Settings,
-  label: "Configurações",
-  path: "/dashboard/organization-settings"
 }];
 const DashboardLayout = ({
   children
@@ -209,7 +205,7 @@ const DashboardLayout = ({
 
         {/* Settings at bottom */}
         <div className="border-t border-border">
-          <Link to="/dashboard/settings" className={cn("flex items-center gap-3 px-3 py-4 text-sm transition-all", location.pathname === "/dashboard/settings" ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground")}>
+          <Link to="/dashboard/organization-settings" className={cn("flex items-center gap-3 px-3 py-4 text-sm transition-all", location.pathname === "/dashboard/organization-settings" ? "text-primary font-medium" : "text-muted-foreground hover:text-foreground")}>
             <Settings className="h-5 w-5 shrink-0" />
             {isExpanded && <span className="whitespace-nowrap">Configurações</span>}
           </Link>
