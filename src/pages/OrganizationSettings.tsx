@@ -187,40 +187,40 @@ const OrganizationSettings = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="inline-flex h-auto flex-wrap items-center justify-center gap-4 rounded-lg bg-muted p-2">
-            <TabsTrigger value="users" className="gap-2 px-6 py-3">
+          <TabsList className="inline-flex h-auto items-center justify-center gap-4 rounded-lg bg-muted p-2 overflow-x-auto">
+            <TabsTrigger value="users" className="gap-2 px-6 py-3 whitespace-nowrap">
               <Users className="h-4 w-4" />
               <span>Usuários</span>
             </TabsTrigger>
-            <TabsTrigger value="channels" className="gap-2 px-6 py-3">
+            <TabsTrigger value="channels" className="gap-2 px-6 py-3 whitespace-nowrap">
               <MessageSquare className="h-4 w-4" />
               <span>Canais</span>
             </TabsTrigger>
-            <TabsTrigger value="integrations" className="gap-2 px-6 py-3">
+            <TabsTrigger value="integrations" className="gap-2 px-6 py-3 whitespace-nowrap">
               <Plug className="h-4 w-4" />
               <span>Integrações</span>
             </TabsTrigger>
-            <TabsTrigger value="tokens" className="gap-2 px-6 py-3">
+            <TabsTrigger value="tokens" className="gap-2 px-6 py-3 whitespace-nowrap">
               <Key className="h-4 w-4" />
               <span>Tokens</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2 px-6 py-3">
+            <TabsTrigger value="templates" className="gap-2 px-6 py-3 whitespace-nowrap">
               <FileText className="h-4 w-4" />
               <span>Modelos</span>
             </TabsTrigger>
-            <TabsTrigger value="webhooks" className="gap-2 px-6 py-3">
+            <TabsTrigger value="webhooks" className="gap-2 px-6 py-3 whitespace-nowrap">
               <Webhook className="h-4 w-4" />
               <span>Webhooks</span>
             </TabsTrigger>
-            <TabsTrigger value="sandbox" className="gap-2 px-6 py-3">
+            <TabsTrigger value="sandbox" className="gap-2 px-6 py-3 whitespace-nowrap">
               <TestTube className="h-4 w-4" />
               <span>Sandbox</span>
             </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-2 px-6 py-3">
+            <TabsTrigger value="financial" className="gap-2 px-6 py-3 whitespace-nowrap">
               <DollarSign className="h-4 w-4" />
               <span>Financeiro</span>
             </TabsTrigger>
-            <TabsTrigger value="plans" className="gap-2 px-6 py-3">
+            <TabsTrigger value="plans" className="gap-2 px-6 py-3 whitespace-nowrap">
               <FileCheck className="h-4 w-4" />
               <span>Planos</span>
             </TabsTrigger>
