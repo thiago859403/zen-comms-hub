@@ -98,9 +98,7 @@ const DashboardLayout = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [openMenus, setOpenMenus] = useState<{
     [key: string]: boolean;
-  }>({
-    "Chatbot": true // Default open
-  });
+  }>({});
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const handleFiles = () => {
