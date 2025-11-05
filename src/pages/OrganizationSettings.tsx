@@ -187,40 +187,40 @@ const OrganizationSettings = () => {
         </div>
 
         <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="inline-flex h-auto items-center justify-center gap-2 rounded-lg bg-muted p-2 overflow-x-auto">
-            <TabsTrigger value="users" className="gap-2 px-4 py-3 whitespace-nowrap">
+          <TabsList className="w-full flex flex-nowrap items-center justify-center gap-2 rounded-lg bg-muted p-2 overflow-x-auto">
+            <TabsTrigger value="users" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <Users className="h-4 w-4" />
               <span>Usuários</span>
             </TabsTrigger>
-            <TabsTrigger value="channels" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="channels" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <MessageSquare className="h-4 w-4" />
               <span>Canais</span>
             </TabsTrigger>
-            <TabsTrigger value="integrations" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="integrations" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <Plug className="h-4 w-4" />
               <span>Integrações</span>
             </TabsTrigger>
-            <TabsTrigger value="tokens" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="tokens" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <Key className="h-4 w-4" />
               <span>Tokens</span>
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="templates" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <FileText className="h-4 w-4" />
               <span>Modelos</span>
             </TabsTrigger>
-            <TabsTrigger value="webhooks" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="webhooks" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <Webhook className="h-4 w-4" />
               <span>Webhooks</span>
             </TabsTrigger>
-            <TabsTrigger value="sandbox" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="sandbox" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <TestTube className="h-4 w-4" />
               <span>Sandbox</span>
             </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="financial" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <DollarSign className="h-4 w-4" />
               <span>Financeiro</span>
             </TabsTrigger>
-            <TabsTrigger value="plans" className="gap-2 px-4 py-3 whitespace-nowrap">
+            <TabsTrigger value="plans" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
               <FileCheck className="h-4 w-4" />
               <span>Planos</span>
             </TabsTrigger>
