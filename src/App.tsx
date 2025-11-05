@@ -28,6 +28,7 @@ import Suggestions from "./pages/Suggestions";
 
 import ChatInbox from "./pages/ChatInbox";
 import BotConfig from "./pages/BotConfig";
+import OrganizationSettings from "./pages/OrganizationSettings";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +63,7 @@ const App = () => (
           
           <Route path="/dashboard/chat-inbox" element={<ChatInbox />} />
           <Route path="/dashboard/bot-config" element={<BotConfig />} />
+          <Route path="/dashboard/organization-settings" element={<OrganizationSettings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

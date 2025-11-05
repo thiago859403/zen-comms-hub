@@ -88,6 +88,10 @@ const menuItems: MenuItem[] = [{
   label: "Admin",
   path: "/dashboard/admin",
   badge: "Admin"
+}, {
+  icon: Settings,
+  label: "Configurações",
+  path: "/dashboard/organization-settings"
 }];
 const DashboardLayout = ({
   children
