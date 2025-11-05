@@ -67,14 +67,6 @@ const menuItems: MenuItem[] = [{
   }, {
     label: "Mapa de fluxos",
     path: "/dashboard/flow-map"
-  }]
-}, {
-  icon: Smartphone,
-  label: "WhatsApp",
-  hasSubmenu: true,
-  submenu: [{
-    label: "Configuração API",
-    path: "/dashboard/whatsapp-config"
   }, {
     label: "Config. do Bot",
     path: "/dashboard/bot-config"
