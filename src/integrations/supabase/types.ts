@@ -577,6 +577,36 @@ export type Database = {
           },
         ]
       }
+      organizations: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string
+          plan: string | null
+          settings: Json | null
+          slug: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name: string
+          plan?: string | null
+          settings?: Json | null
+          slug: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string
+          plan?: string | null
+          settings?: Json | null
+          slug?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           company: string | null
@@ -587,6 +617,7 @@ export type Database = {
           id: string
           last_login: string | null
           locked_until: string | null
+          org_id: string
           plan: string | null
           status: string | null
           updated_at: string | null
@@ -600,6 +631,7 @@ export type Database = {
           id: string
           last_login?: string | null
           locked_until?: string | null
+          org_id: string
           plan?: string | null
           status?: string | null
           updated_at?: string | null
@@ -613,11 +645,20 @@ export type Database = {
           id?: string
           last_login?: string | null
           locked_until?: string | null
+          org_id?: string
           plan?: string | null
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       queues: {
         Row: {
@@ -783,6 +824,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      current_org_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
