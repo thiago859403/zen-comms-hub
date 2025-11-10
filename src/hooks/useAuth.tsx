@@ -46,12 +46,12 @@ export const useAuth = () => {
     navigate('/auth');
   };
 
-  const checkRole = async (role: string): Promise<boolean> => {
+  const checkRole = async (role: 'admin' | 'user' | 'moderator'): Promise<boolean> => {
     if (!authState.user) return false;
 
     const { data, error } = await supabase.rpc('has_role', {
       _user_id: authState.user.id,
-      _role: role,
+      _role: role as any,
     });
 
     if (error) {
