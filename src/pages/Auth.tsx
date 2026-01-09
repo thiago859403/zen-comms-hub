@@ -87,19 +87,38 @@ export default function Auth() {
     try {
       signupSchema.parse(signupData);
 
+      // Verificar se o cliente Supabase está configurado corretamente
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error(
+          'Configuração do Supabase não encontrada. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.local'
+        );
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
         options: {
           data: {
             full_name: signupData.full_name,
-            company: signupData.company,
+            company: signupData.company || '',
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          // Não incluir emailRedirectTo se confirmação de email estiver desabilitada
+          // Isso evita problemas com URLs não configuradas no Supabase
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        // Melhor tratamento de erros específicos do Supabase
+        if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+          throw new Error(
+            'Chave de API inválida. Por favor, reinicie o servidor de desenvolvimento (pnpm dev) para carregar as variáveis de ambiente atualizadas.'
+          );
+        }
+        throw error;
+      }
 
       toast({
         title: "Conta criada com sucesso!",
@@ -115,6 +134,7 @@ export default function Auth() {
           variant: "destructive",
         });
       } else {
+        console.error('Erro no signup:', error);
         toast({
           title: "Erro ao criar conta",
           description: error.message || "Tente novamente mais tarde",
