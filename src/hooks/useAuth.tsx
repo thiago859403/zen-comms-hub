@@ -46,20 +46,61 @@ export const useAuth = () => {
     navigate('/auth');
   };
 
-  const checkRole = async (role: 'admin' | 'user' | 'moderator'): Promise<boolean> => {
+  const checkRole = async (role: 'admin' | 'user' | 'moderator' | 'master'): Promise<boolean> => {
     if (!authState.user) return false;
 
-    const { data, error } = await supabase.rpc('has_role', {
-      _user_id: authState.user.id,
-      _role: role as any,
-    });
+    try {
+      // Verificar role diretamente na tabela profiles (novo modelo)
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', authState.user.id)
+        .single();
 
-    if (error) {
-      console.error('Error checking role:', error);
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        // Fallback: tentar usar a função has_role antiga (user_roles)
+        const { data, error } = await supabase.rpc('has_role', {
+          _user_id: authState.user.id,
+          _role: role as any,
+        });
+
+        if (error) {
+          console.error('Error checking role (fallback):', error);
+          return false;
+        }
+
+        return data || false;
+      }
+
+      // Verificar se o role do perfil corresponde ao role solicitado
+      // Master admins têm acesso a tudo (incluindo quando solicitado 'admin')
+      if (profile?.role === role) {
+        return true;
+      }
+      
+      // Se o perfil for master, tem acesso a tudo (incluindo páginas que requerem 'admin')
+      // Ex: se solicitado 'admin' mas perfil é 'master', permite acesso
+      if (profile?.role === 'master') {
+        return true;
+      }
+
+      // Se não encontrou na coluna role, tentar user_roles como fallback
+      const { data, error } = await supabase.rpc('has_role', {
+        _user_id: authState.user.id,
+        _role: role as any,
+      });
+
+      if (error) {
+        console.error('Error checking role in user_roles:', error);
+        return false;
+      }
+
+      return data || false;
+    } catch (error) {
+      console.error('Error in checkRole:', error);
       return false;
     }
-
-    return data || false;
   };
 
   return {

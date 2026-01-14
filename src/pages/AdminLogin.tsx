@@ -37,14 +37,14 @@ export default function AdminLogin() {
   const checkIfAlreadyAdmin = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session) {
-      const { data: roles } = await supabase
-        .from("user_roles")
+      // Verificar se é master admin na tabela profiles
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("role")
-        .eq("user_id", session.user.id)
-        .eq("role", "admin")
+        .eq("id", session.user.id)
         .single();
 
-      if (roles) {
+      if (profile?.role === "master") {
         navigate("/dashboard/admin");
       }
     }
@@ -80,17 +80,16 @@ export default function AdminLogin() {
 
       if (error) throw error;
 
-      // Verificar se é admin
-      const { data: roles } = await supabase
-        .from("user_roles")
+      // Verificar se é master admin na tabela profiles
+      const { data: profile } = await supabase
+        .from("profiles")
         .select("role")
-        .eq("user_id", data.user.id)
-        .eq("role", "admin")
+        .eq("id", data.user.id)
         .single();
 
-      if (!roles) {
+      if (profile?.role !== "master") {
         await supabase.auth.signOut();
-        throw new Error("Acesso negado: privilégios de administrador necessários");
+        throw new Error("Acesso negado: privilégios de administrador master necessários");
       }
 
       // Log da atividade de login

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Activity, TrendingUp, Shield as ShieldIcon, BarChart3, Clock } from "lucide-react";
+import { Building2, Users, Activity, TrendingUp, Shield, BarChart3, Clock, Edit, Trash2, Lock, Unlock, UserPlus, Search, Mail, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -33,58 +33,69 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import {
-  UserPlus,
-  Edit,
-  Trash2,
-  Lock,
-  Unlock,
-  Shield,
-  Search,
-} from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 
-interface Profile {
+interface Empresa {
+  id: number;
+  nome: string;
+  plano_id: number | null;
+  plano_nome?: string;
+  status: string | null;
+  is_active: boolean | null;
+  created_at: string;
+  updated_at: string;
+  usuarios_count?: number;
+}
+
+interface Plano {
+  id: number;
+  nome: string;
+  preco_mensal: number;
+}
+
+interface UserProfile {
   id: string;
   email: string;
   full_name: string | null;
-  company: string | null;
-  plan: string;
+  role: string;
   status: string;
   created_at: string;
-  last_login: string | null;
-}
-
-interface UserRole {
-  user_id: string;
-  role: string;
 }
 
 export default function Admin() {
   const navigate = useNavigate();
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
+  const { toast } = useToast();
+  const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [planos, setPlanos] = useState<Plano[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingProfile, setEditingProfile] = useState<Profile | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const { toast } = useToast();
+  const [isEmpresaDialogOpen, setIsEmpresaDialogOpen] = useState(false);
+  const [isUsersDialogOpen, setIsUsersDialogOpen] = useState(false);
+  const [editingEmpresa, setEditingEmpresa] = useState<Empresa | null>(null);
+  const [selectedEmpresaId, setSelectedEmpresaId] = useState<number | null>(null);
+  const [empresaUsers, setEmpresaUsers] = useState<UserProfile[]>([]);
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
 
-  const [formData, setFormData] = useState({
+  const [empresaFormData, setEmpresaFormData] = useState({
+    nome: "",
+    plano_id: "",
+    status: "active",
+    is_active: true,
+  });
+
+  const [userFormData, setUserFormData] = useState({
     email: "",
     password: "",
     full_name: "",
-    company: "",
-    plan: "free",
-    status: "active",
+    role: "user",
   });
 
   useEffect(() => {
-    checkAdminAccess();
-    loadProfiles();
+    checkMasterAdminAccess();
+    loadData();
   }, []);
 
-  const checkAdminAccess = async () => {
+  const checkMasterAdminAccess = async () => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -95,53 +106,71 @@ export default function Admin() {
         description: "Você precisa estar autenticado",
         variant: "destructive",
       });
-      navigate("/admin/login");
+      navigate("/auth");
       return;
     }
 
-    const { data: roles } = await supabase
-      .from("user_roles")
+    // Verificar se é master admin
+    const { data: profile } = await supabase
+      .from("profiles")
       .select("role")
-      .eq("user_id", user.id);
+      .eq("id", user.id)
+      .single();
 
-    const isAdmin = roles?.some((r) => r.role === "admin");
-
-    if (!isAdmin) {
+    if (profile?.role !== "master") {
       toast({
         title: "Acesso negado",
-        description: "Apenas administradores podem acessar esta página",
+        description: "Apenas o administrador master pode acessar esta página",
         variant: "destructive",
       });
-      navigate("/admin/login");
+      navigate("/dashboard");
     }
   };
 
-  const loadProfiles = async () => {
+  const loadData = async () => {
     try {
-      const { data: profilesData, error: profilesError } = await supabase
-        .from("profiles")
+      setLoading(true);
+      
+      // Carregar empresas
+      const { data: empresasData, error: empresasError } = await supabase
+        .from("empresas")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (empresasError) throw empresasError;
 
-      const { data: rolesData } = await supabase
-        .from("user_roles")
-        .select("user_id, role");
+      // Carregar planos
+      const { data: planosData, error: planosError } = await supabase
+        .from("planos")
+        .select("*")
+        .eq("is_active", true)
+        .order("preco_mensal");
 
-      const rolesMap: Record<string, string[]> = {};
-      rolesData?.forEach((role: UserRole) => {
-        if (!rolesMap[role.user_id]) {
-          rolesMap[role.user_id] = [];
-        }
-        rolesMap[role.user_id].push(role.role);
-      });
+      if (planosError) throw planosError;
 
-      setProfiles(profilesData || []);
-      setUserRoles(rolesMap);
+      // Contar usuários por empresa
+      const empresasWithCounts = await Promise.all(
+        (empresasData || []).map(async (empresa: any) => {
+          const { count } = await supabase
+            .from("profiles")
+            .select("*", { count: "exact", head: true })
+            .eq("empresa_id", empresa.id);
+
+          const planoNome = planosData?.find((p: Plano) => p.id === empresa.plano_id)?.nome || "Sem plano";
+
+          return {
+            ...empresa,
+            usuarios_count: count || 0,
+            plano_nome: planoNome,
+          };
+        })
+      );
+
+      setEmpresas(empresasWithCounts);
+      setPlanos(planosData || []);
     } catch (error: any) {
       toast({
-        title: "Erro ao carregar usuários",
+        title: "Erro ao carregar dados",
         description: error.message,
         variant: "destructive",
       });
@@ -150,43 +179,123 @@ export default function Admin() {
     }
   };
 
+  const loadEmpresaUsers = async (empresaId: number) => {
+    try {
+      const { data: usersData, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("empresa_id", empresaId)
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+
+      setEmpresaUsers(usersData || []);
+    } catch (error: any) {
+      toast({
+        title: "Erro ao carregar usuários",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateEmpresa = async () => {
+    if (!editingEmpresa) return;
+
+    try {
+      const { error } = await supabase
+        .from("empresas")
+        .update({
+          nome: empresaFormData.nome,
+          plano_id: empresaFormData.plano_id ? parseInt(empresaFormData.plano_id) : null,
+          status: empresaFormData.status,
+          is_active: empresaFormData.is_active,
+        })
+        .eq("id", editingEmpresa.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Empresa atualizada",
+        description: "Alterações salvas com sucesso",
+      });
+
+      setIsEmpresaDialogOpen(false);
+      resetEmpresaForm();
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar empresa",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleToggleEmpresaStatus = async (empresaId: number, currentStatus: boolean | null) => {
+    const newStatus = !currentStatus;
+
+    try {
+      const { error } = await supabase
+        .from("empresas")
+        .update({ is_active: newStatus, status: newStatus ? "active" : "suspended" })
+        .eq("id", empresaId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Status atualizado",
+        description: `Empresa ${newStatus ? "ativada" : "suspensa"} com sucesso`,
+      });
+
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Erro ao atualizar status",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleCreateUser = async () => {
-    setIsCreating(true);
+    if (!selectedEmpresaId) return;
+
+    setIsCreatingUser(true);
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: userFormData.email,
+        password: userFormData.password,
         options: {
           data: {
-            full_name: formData.full_name,
-            company: formData.company,
+            full_name: userFormData.full_name,
           },
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
       if (authError) throw authError;
 
       if (authData.user) {
+        // Atualizar perfil com empresa_id e role
         const { error: profileError } = await supabase
           .from("profiles")
           .update({
-            plan: formData.plan,
-            status: formData.status,
+            empresa_id: selectedEmpresaId,
+            role: userFormData.role,
           })
           .eq("id", authData.user.id);
 
         if (profileError) throw profileError;
+
+        toast({
+          title: "Usuário criado",
+          description: "Usuário adicionado à empresa com sucesso",
+        });
+
+        resetUserForm();
+        loadEmpresaUsers(selectedEmpresaId);
       }
-
-      toast({
-        title: "Usuário criado",
-        description: "Conta criada com sucesso",
-      });
-
-      setIsDialogOpen(false);
-      resetForm();
-      loadProfiles();
     } catch (error: any) {
       toast({
         title: "Erro ao criar usuário",
@@ -194,70 +303,37 @@ export default function Admin() {
         variant: "destructive",
       });
     } finally {
-      setIsCreating(false);
+      setIsCreatingUser(false);
     }
   };
 
-  const handleUpdateProfile = async () => {
-    if (!editingProfile) return;
-
+  const handleUpdateUserRole = async (userId: string, newRole: string) => {
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({
-          full_name: formData.full_name,
-          company: formData.company,
-          plan: formData.plan,
-          status: formData.status,
-        })
-        .eq("id", editingProfile.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Perfil atualizado",
-        description: "Alterações salvas com sucesso",
-      });
-
-      setIsDialogOpen(false);
-      resetForm();
-      loadProfiles();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar perfil",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
-
-    try {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
+        .update({ role: newRole })
         .eq("id", userId);
 
       if (error) throw error;
 
       toast({
-        title: "Usuário excluído",
-        description: "Conta removida com sucesso",
+        title: "Permissões atualizadas",
+        description: "Role do usuário atualizado com sucesso",
       });
 
-      loadProfiles();
+      if (selectedEmpresaId) {
+        loadEmpresaUsers(selectedEmpresaId);
+      }
     } catch (error: any) {
       toast({
-        title: "Erro ao excluir usuário",
+        title: "Erro ao atualizar permissões",
         description: error.message,
         variant: "destructive",
       });
     }
   };
 
-  const handleToggleStatus = async (userId: string, currentStatus: string) => {
+  const handleToggleUserStatus = async (userId: string, currentStatus: string) => {
     const newStatus = currentStatus === "active" ? "blocked" : "active";
 
     try {
@@ -273,7 +349,9 @@ export default function Admin() {
         description: `Usuário ${newStatus === "active" ? "desbloqueado" : "bloqueado"} com sucesso`,
       });
 
-      loadProfiles();
+      if (selectedEmpresaId) {
+        loadEmpresaUsers(selectedEmpresaId);
+      }
     } catch (error: any) {
       toast({
         title: "Erro ao atualizar status",
@@ -283,534 +361,443 @@ export default function Admin() {
     }
   };
 
-  const handleToggleAdminRole = async (userId: string) => {
-    const isCurrentlyAdmin = userRoles[userId]?.includes("admin");
-
-    try {
-      if (isCurrentlyAdmin) {
-        const { error } = await supabase
-          .from("user_roles")
-          .delete()
-          .eq("user_id", userId)
-          .eq("role", "admin");
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("user_roles")
-          .insert({ user_id: userId, role: "admin" });
-
-        if (error) throw error;
-      }
-
-      toast({
-        title: "Permissões atualizadas",
-        description: isCurrentlyAdmin
-          ? "Permissões de admin removidas"
-          : "Permissões de admin concedidas",
-      });
-
-      loadProfiles();
-    } catch (error: any) {
-      toast({
-        title: "Erro ao atualizar permissões",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const openCreateDialog = () => {
-    resetForm();
-    setEditingProfile(null);
-    setIsDialogOpen(true);
-  };
-
-  const openEditDialog = (profile: Profile) => {
-    setEditingProfile(profile);
-    setFormData({
-      email: profile.email,
-      password: "",
-      full_name: profile.full_name || "",
-      company: profile.company || "",
-      plan: profile.plan,
-      status: profile.status,
+  const openEditEmpresaDialog = (empresa: Empresa) => {
+    setEditingEmpresa(empresa);
+    setEmpresaFormData({
+      nome: empresa.nome,
+      plano_id: empresa.plano_id?.toString() || "",
+      status: empresa.status || "active",
+      is_active: empresa.is_active ?? true,
     });
-    setIsDialogOpen(true);
+    setIsEmpresaDialogOpen(true);
   };
 
-  const resetForm = () => {
-    setFormData({
+  const openUsersDialog = async (empresaId: number) => {
+    setSelectedEmpresaId(empresaId);
+    setIsUsersDialogOpen(true);
+    await loadEmpresaUsers(empresaId);
+  };
+
+  const resetEmpresaForm = () => {
+    setEmpresaFormData({
+      nome: "",
+      plano_id: "",
+      status: "active",
+      is_active: true,
+    });
+    setEditingEmpresa(null);
+  };
+
+  const resetUserForm = () => {
+    setUserFormData({
       email: "",
       password: "",
       full_name: "",
-      company: "",
-      plan: "free",
-      status: "active",
+      role: "user",
     });
-    setEditingProfile(null);
   };
 
-  const filteredProfiles = profiles.filter(
-    (profile) =>
-      profile.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      profile.company?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredEmpresas = empresas.filter((empresa) =>
+    empresa.nome.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "destructive" | "secondary"> = {
-      active: "default",
-      blocked: "destructive",
-      pending: "secondary",
-    };
-
-    const labels: Record<string, string> = {
-      active: "Ativo",
-      blocked: "Bloqueado",
-      pending: "Pendente",
-    };
-
-    return (
-      <Badge variant={variants[status] || "secondary"}>
-        {labels[status] || status}
-      </Badge>
-    );
-  };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Carregando...</div>
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center space-y-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          </div>
+        </div>
+      </DashboardLayout>
     );
   }
 
-  const roles = userRoles;
-
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold mb-2 flex items-center gap-2">
-              <ShieldIcon className="h-8 w-8 text-primary" />
-              Painel Administrativo
-            </h1>
-            <p className="text-muted-foreground">
-              Controle total sobre clientes, acessos e monitoramento do sistema
-            </p>
-          </div>
+      <div className="p-6 space-y-6 max-w-7xl mx-auto">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            <Shield className="h-8 w-8" />
+            Painel Administrativo - Nuvia
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Gerencie todos os clientes da plataforma
+          </p>
         </div>
 
-        {/* Dashboard Stats */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {/* Estatísticas */}
+        <div className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total de Clientes</CardTitle>
+              <Building2 className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{empresas.length}</div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Clientes Ativos</CardTitle>
+              <Activity className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {empresas.filter((e) => e.is_active).length}
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Usuários</CardTitle>
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{profiles.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {profiles.filter(p => p.status === 'active').length} ativos
-              </p>
+              <div className="text-2xl font-bold">
+                {empresas.reduce((sum, e) => sum + (e.usuarios_count || 0), 0)}
+              </div>
             </CardContent>
           </Card>
-
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Planos Ativos</CardTitle>
+              <CardTitle className="text-sm font-medium">Receita Mensal</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">
-                {profiles.filter(p => p.plan !== 'free').length}
+                R$ {empresas.reduce((sum, e) => {
+                  const plano = planos.find((p) => p.id === e.plano_id);
+                  return sum + (plano?.preco_mensal || 0);
+                }, 0).toFixed(2)}
               </div>
-              <p className="text-xs text-muted-foreground">
-                Premium e Enterprise
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Administradores</CardTitle>
-              <ShieldIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {profiles.filter(p => roles[p.id]?.includes('admin')).length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Com acesso total
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Últimos Acessos</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {profiles.filter(p => {
-                  if (!p.last_login) return false;
-                  const lastLogin = new Date(p.last_login);
-                  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-                  return lastLogin > oneDayAgo;
-                }).length}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Nas últimas 24h
-              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabs for different sections */}
-        <Tabs defaultValue="clients" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="clients">Gestão de Clientes</TabsTrigger>
-            <TabsTrigger value="logs">Logs de Atividade</TabsTrigger>
-            <TabsTrigger value="monitoring">Monitoramento</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="clients" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Clientes Cadastrados</CardTitle>
-                    <CardDescription>
-                      Gerencie contas, planos e permissões de acesso
-                    </CardDescription>
-                  </div>
-                  <Button onClick={openCreateDialog} size="lg">
-                    <UserPlus className="mr-2 h-5 w-5" />
-                    Novo Cliente
-                  </Button>
+        {/* Lista de Empresas */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Clientes</CardTitle>
+                <CardDescription>Lista de todas as empresas clientes</CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-8 w-64"
+                  />
                 </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Plano</TableHead>
+                  <TableHead>Usuários</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data de Cadastro</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredEmpresas.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      Nenhuma empresa encontrada
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredEmpresas.map((empresa) => (
+                    <TableRow key={empresa.id}>
+                      <TableCell className="font-medium">{empresa.nome}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{empresa.plano_nome || "Sem plano"}</Badge>
+                      </TableCell>
+                      <TableCell>{empresa.usuarios_count || 0}</TableCell>
+                      <TableCell>
+                        <Badge variant={empresa.is_active ? "default" : "secondary"}>
+                          {empresa.is_active ? "Ativo" : "Suspenso"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(empresa.created_at).toLocaleDateString("pt-BR")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openUsersDialog(empresa.id)}
+                          >
+                            <Users className="h-4 w-4 mr-1" />
+                            Usuários
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => openEditEmpresaDialog(empresa)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleEmpresaStatus(empresa.id, empresa.is_active)}
+                          >
+                            {empresa.is_active ? (
+                              <Lock className="h-4 w-4 text-destructive" />
+                            ) : (
+                              <Unlock className="h-4 w-4 text-green-600" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Dialog: Editar Empresa */}
+        <Dialog open={isEmpresaDialogOpen} onOpenChange={setIsEmpresaDialogOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Editar Empresa</DialogTitle>
+              <DialogDescription>
+                Altere os dados cadastrais e plano da empresa
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome</Label>
+                <Input
+                  id="nome"
+                  value={empresaFormData.nome}
+                  onChange={(e) =>
+                    setEmpresaFormData({ ...empresaFormData, nome: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="plano_id">Plano</Label>
+                <Select
+                  value={empresaFormData.plano_id}
+                  onValueChange={(value) =>
+                    setEmpresaFormData({ ...empresaFormData, plano_id: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione um plano" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {planos.map((plano) => (
+                      <SelectItem key={plano.id} value={plano.id.toString()}>
+                        {plano.nome} - R$ {plano.preco_mensal.toFixed(2)}/mês
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="status">Status</Label>
+                <Select
+                  value={empresaFormData.status}
+                  onValueChange={(value) =>
+                    setEmpresaFormData({ ...empresaFormData, status: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Ativo</SelectItem>
+                    <SelectItem value="suspended">Suspenso</SelectItem>
+                    <SelectItem value="cancelled">Cancelado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="is_active"
+                  checked={empresaFormData.is_active}
+                  onChange={(e) =>
+                    setEmpresaFormData({ ...empresaFormData, is_active: e.target.checked })
+                  }
+                  className="rounded border-gray-300"
+                />
+                <Label htmlFor="is_active">Ativo</Label>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEmpresaDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateEmpresa}>Salvar Alterações</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog: Gerenciar Usuários */}
+        <Dialog open={isUsersDialogOpen} onOpenChange={setIsUsersDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Gerenciar Usuários</DialogTitle>
+              <DialogDescription>
+                Adicione novos usuários e gerencie permissões
+              </DialogDescription>
+            </DialogHeader>
+
+            {/* Formulário para adicionar usuário */}
+            <Card className="mb-4">
+              <CardHeader>
+                <CardTitle className="text-lg">Adicionar Novo Usuário</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-
-                <div className="flex items-center gap-4">
-                  <div className="relative flex-1 max-w-md">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="user_email">E-mail</Label>
                     <Input
-                      placeholder="Buscar por nome, email ou empresa..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-10"
+                      id="user_email"
+                      type="email"
+                      value={userFormData.email}
+                      onChange={(e) =>
+                        setUserFormData({ ...userFormData, email: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user_password">Senha</Label>
+                    <Input
+                      id="user_password"
+                      type="password"
+                      value={userFormData.password}
+                      onChange={(e) =>
+                        setUserFormData({ ...userFormData, password: e.target.value })
+                      }
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="user_name">Nome Completo</Label>
+                    <Input
+                      id="user_name"
+                      value={userFormData.full_name}
+                      onChange={(e) =>
+                        setUserFormData({ ...userFormData, full_name: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="user_role">Permissão</Label>
+                    <Select
+                      value={userFormData.role}
+                      onValueChange={(value) =>
+                        setUserFormData({ ...userFormData, role: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="user">Usuário</SelectItem>
+                        <SelectItem value="admin">Administrador</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <Button onClick={handleCreateUser} disabled={isCreatingUser}>
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  {isCreatingUser ? "Criando..." : "Adicionar Usuário"}
+                </Button>
+              </CardContent>
+            </Card>
 
-                <div className="rounded-lg border bg-card">
-                  <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Cliente</TableHead>
-                <TableHead>Empresa</TableHead>
-                <TableHead>Plano</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Permissões</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead>Último login</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredProfiles.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                    Nenhum cliente encontrado
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredProfiles.map((profile) => (
-                  <TableRow key={profile.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">{profile.full_name}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {profile.email}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{profile.company || "-"}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{profile.plan}</Badge>
-                    </TableCell>
-                    <TableCell>{getStatusBadge(profile.status)}</TableCell>
-                    <TableCell>
-                      {userRoles[profile.id]?.includes("admin") && (
-                        <Badge className="bg-primary">
-                          <Shield className="mr-1 h-3 w-3" />
-                          Admin
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {new Date(profile.created_at).toLocaleDateString("pt-BR")}
-                    </TableCell>
-                    <TableCell>
-                      {profile.last_login
-                        ? new Date(profile.last_login).toLocaleDateString("pt-BR")
-                        : "Nunca"}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(profile)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            handleToggleStatus(profile.id, profile.status)
-                          }
-                        >
-                          {profile.status === "active" ? (
-                            <Lock className="h-4 w-4" />
-                          ) : (
-                            <Unlock className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleToggleAdminRole(profile.id)}
-                        >
-                          <Shield
-                            className={`h-4 w-4 ${
-                              userRoles[profile.id]?.includes("admin")
-                                ? "text-primary"
-                                : ""
-                            }`}
-                          />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDeleteUser(profile.id)}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </div>
-                    </TableCell>
+            {/* Lista de usuários */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">Usuários da Empresa</h3>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Permissão</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))
-              )}
-                  </TableBody>
-                </Table>
-              </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                </TableHeader>
+                <TableBody>
+                  {empresaUsers.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        Nenhum usuário encontrado
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    empresaUsers.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>{user.full_name || "-"}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>
+                          <Select
+                            value={user.role}
+                            onValueChange={(value) => handleUpdateUserRole(user.id, value)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">Usuário</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={user.status === "active" ? "default" : "secondary"}>
+                            {user.status === "active" ? "Ativo" : "Bloqueado"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleToggleUserStatus(user.id, user.status)}
+                          >
+                            {user.status === "active" ? (
+                              <Lock className="h-4 w-4" />
+                            ) : (
+                              <Unlock className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
 
-          <TabsContent value="logs" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Histórico de Atividades
-                </CardTitle>
-                <CardDescription>
-                  Registro completo de ações administrativas no sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <Activity className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Sistema de logs em tempo real</p>
-                  <p className="text-sm">Todas as ações são registradas com data, hora e responsável</p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="monitoring" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Monitoramento e Análises
-                </CardTitle>
-                <CardDescription>
-                  Métricas de uso, crescimento e performance do sistema
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-semibold mb-2">Crescimento Mensal</h4>
-                      <p className="text-3xl font-bold text-primary">+{Math.floor(profiles.length * 0.15)}</p>
-                      <p className="text-sm text-muted-foreground">novos clientes este mês</p>
-                    </div>
-                    <div className="p-4 border rounded-lg">
-                      <h4 className="font-semibold mb-2">Taxa de Retenção</h4>
-                      <p className="text-3xl font-bold text-green-600">
-                        {Math.floor((profiles.filter(p => p.status === 'active').length / profiles.length) * 100)}%
-                      </p>
-                      <p className="text-sm text-muted-foreground">clientes ativos</p>
-                    </div>
-                  </div>
-                  
-                  <div className="p-4 border rounded-lg">
-                    <h4 className="font-semibold mb-3">Distribuição de Planos</h4>
-                    <div className="space-y-2">
-                      {['free', 'basic', 'professional', 'enterprise'].map(plan => {
-                        const count = profiles.filter(p => p.plan === plan).length;
-                        const percentage = profiles.length > 0 ? (count / profiles.length) * 100 : 0;
-                        return (
-                          <div key={plan} className="flex items-center gap-3">
-                            <span className="text-sm font-medium w-24 capitalize">{plan}</span>
-                            <div className="flex-1 bg-secondary rounded-full h-2">
-                              <div 
-                                className="bg-primary h-2 rounded-full transition-all"
-                                style={{ width: `${percentage}%` }}
-                              />
-                            </div>
-                            <span className="text-sm text-muted-foreground w-16 text-right">
-                              {count} ({percentage.toFixed(0)}%)
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsUsersDialogOpen(false)}>
+                Fechar
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {editingProfile ? "Editar Cliente" : "Novo Cliente"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingProfile
-                ? "Atualize as informações do cliente"
-                : "Preencha os dados para criar uma nova conta"}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                disabled={!!editingProfile}
-                required
-              />
-            </div>
-            {!editingProfile && (
-              <div className="grid gap-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) =>
-                    setFormData({ ...formData, password: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label htmlFor="full_name">Nome Completo</Label>
-              <Input
-                id="full_name"
-                value={formData.full_name}
-                onChange={(e) =>
-                  setFormData({ ...formData, full_name: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="company">Empresa</Label>
-              <Input
-                id="company"
-                value={formData.company}
-                onChange={(e) =>
-                  setFormData({ ...formData, company: e.target.value })
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="plan">Plano</Label>
-              <Select
-                value={formData.plan}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, plan: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="free">Free</SelectItem>
-                  <SelectItem value="basic">Basic</SelectItem>
-                  <SelectItem value="professional">Professional</SelectItem>
-                  <SelectItem value="enterprise">Enterprise</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="status">Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, status: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Ativo</SelectItem>
-                  <SelectItem value="blocked">Bloqueado</SelectItem>
-                  <SelectItem value="pending">Pendente</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsDialogOpen(false);
-                resetForm();
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={editingProfile ? handleUpdateProfile : handleCreateUser}
-              disabled={isCreating}
-            >
-              {editingProfile ? "Salvar Alterações" : "Criar Cliente"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </DashboardLayout>
   );
 }

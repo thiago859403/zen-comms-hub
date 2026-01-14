@@ -6,7 +6,7 @@ import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone,
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
 import ChatAssistant from "./ChatAssistant";
 import HelpDropdown from "./HelpDropdown";
@@ -40,7 +40,7 @@ const menuItems: MenuItem[] = [{
   path: "/dashboard/contacts"
 }, {
   icon: Send,
-  label: "Envio de mensagens",
+  label: "Nuvia Blast",
   path: "/dashboard/message-sending"
 }, {
   icon: Megaphone,
@@ -116,11 +116,7 @@ const DashboardLayout = ({
   };
 
   const handleProfile = () => {
-    navigate("/dashboard/settings");
-    toast({
-      title: "Perfil",
-      description: "Navegando para as configurações de perfil.",
-    });
+    navigate("/dashboard/organization-settings");
   };
 
   const handleLogout = async () => {
@@ -171,7 +167,7 @@ const DashboardLayout = ({
             <img 
               src={nuviaIcon} 
               alt="Nuvia Customer Cloud - Voltar para início" 
-              className="h-12 w-12 shrink-0" 
+              className="h-16 w-16 shrink-0 object-contain" 
             />
             {(isExpanded || isMobileMenuOpen) && (
               <span className="text-white font-semibold tracking-wide whitespace-nowrap">
@@ -424,7 +420,8 @@ const DashboardLayout = ({
                     className="relative h-10 w-10 rounded-full hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
                     aria-label="Menu do usuário"
                   >
-                    <Avatar className="h-10 w-10">
+                    <Avatar key={profile.avatarUrl || 'no-avatar'} className="h-10 w-10">
+                      <AvatarImage src={profile.avatarUrl || undefined} alt={profile.fullName} />
                       <AvatarFallback className="bg-primary text-primary-foreground">
                         {profile.avatarInitials}
                       </AvatarFallback>
@@ -442,10 +439,6 @@ const DashboardLayout = ({
                   <DropdownMenuItem onClick={handleProfile}>
                     <Users className="mr-2 h-4 w-4" aria-hidden="true" />
                     <span>Perfil</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigate("/dashboard/settings")}>
-                    <Settings className="mr-2 h-4 w-4" aria-hidden="true" />
-                    <span>Configurações</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem className="text-destructive" onClick={handleLogout}>

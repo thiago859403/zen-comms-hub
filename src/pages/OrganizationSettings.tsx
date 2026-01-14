@@ -11,9 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Users, UserPlus, Search, Mail, Loader2, Trash2, MessageSquare, Plug, Key, FileText, Webhook, TestTube, DollarSign, FileCheck, Copy, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
+import { Settings, Users, UserPlus, Search, Mail, Loader2, Trash2, MessageSquare, Plug, Key, FileText, Webhook, TestTube, DollarSign, FileCheck, Copy, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle, Bell, Smartphone, User, Camera } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 interface UserProfile {
   id: string;
@@ -26,16 +29,34 @@ interface UserProfile {
 
 const OrganizationSettings = () => {
   const { toast } = useToast();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [newInviteEmail, setNewInviteEmail] = useState("");
   const [newInviteRole, setNewInviteRole] = useState<"admin" | "operator" | "viewer" | "agent">("agent");
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  
+  // Estados para o perfil do usuário
+  const [userProfile, setUserProfile] = useState<{
+    full_name: string;
+    email: string;
+    avatar_url: string | null;
+  } | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileFormData, setProfileFormData] = useState({
+    full_name: "",
+    email: "",
+  });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
-  }, []);
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user]);
 
   const loadUsers = async () => {
     try {
@@ -49,21 +70,29 @@ const OrganizationSettings = () => {
 
       if (profilesError) throw profilesError;
 
-      // Buscar roles de cada usuário
+      // Mapear perfis para incluir role (usar coluna role de profiles, com fallback para user_roles)
       const usersWithRoles = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", profile.id)
-            .single();
+        (profiles || []).map(async (profile: any) => {
+          // Priorizar coluna role diretamente de profiles (novo modelo)
+          let userRole = profile.role || "user";
+          
+          // Se não houver role em profiles, tentar buscar em user_roles (compatibilidade)
+          if (!profile.role) {
+            const { data: roleData } = await supabase
+              .from("user_roles")
+              .select("role")
+              .eq("user_id", profile.id)
+              .maybeSingle(); // usar maybeSingle ao invés de single para não falhar
+
+            userRole = roleData?.role || "user";
+          }
 
           return {
             id: profile.id,
             email: profile.email,
             full_name: profile.full_name,
             status: profile.status || "active",
-            role: roleData?.role || "user",
+            role: userRole,
             created_at: profile.created_at
           };
         })
@@ -168,6 +197,133 @@ const OrganizationSettings = () => {
     }
   };
 
+  const loadUserProfile = async () => {
+    if (!user?.id) return;
+    
+    try {
+      setProfileLoading(true);
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("full_name, email, avatar_url")
+        .eq("id", user.id)
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        const avatarUrl = data.avatar_url || null;
+        setUserProfile({
+          full_name: data.full_name || "",
+          email: data.email || user.email || "",
+          avatar_url: avatarUrl,
+        });
+        setProfileFormData({
+          full_name: data.full_name || "",
+          email: data.email || user.email || "",
+        });
+        setAvatarPreview(avatarUrl);
+      }
+    } catch (error: any) {
+      console.error("Erro ao carregar perfil:", error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "Arquivo muito grande",
+          description: "A imagem deve ter no máximo 5MB",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setAvatarFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setAvatarPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!user?.id) return;
+
+    try {
+      setLoading(true);
+
+      let avatarUrl = userProfile?.avatar_url || null;
+
+      // Se houver arquivo de avatar, fazer upload
+      if (avatarFile) {
+        const fileExt = avatarFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const filePath = `avatars/${fileName}`;
+
+        // Upload para Supabase Storage
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(filePath, avatarFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) {
+          throw uploadError;
+        }
+
+        // Obter URL pública
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(filePath);
+
+        avatarUrl = urlData.publicUrl;
+
+        // Limpar estado do arquivo
+        setAvatarFile(null);
+      }
+
+      // Atualizar perfil
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: profileFormData.full_name,
+          email: profileFormData.email,
+          avatar_url: avatarUrl,
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Perfil atualizado",
+        description: "Suas informações foram salvas com sucesso.",
+      });
+
+      await loadUserProfile();
+      
+      // Pequeno delay para garantir que o banco foi atualizado
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Forçar atualização do dashboard para refletir mudanças no header
+      console.log('Disparando evento profile-updated');
+      window.dispatchEvent(new CustomEvent('profile-updated'));
+    } catch (error: any) {
+      toast({
+        title: "Erro ao salvar perfil",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredUsers = users.filter(user =>
     user.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase())
@@ -186,45 +342,226 @@ const OrganizationSettings = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="users" className="space-y-6">
-          <TabsList className="w-full flex flex-nowrap items-center justify-center gap-2 rounded-lg bg-muted p-3">
-            <TabsTrigger value="users" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <Users className="h-4 w-4" />
-              <span>Usuários</span>
-            </TabsTrigger>
-            <TabsTrigger value="channels" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <MessageSquare className="h-4 w-4" />
-              <span>Canais</span>
-            </TabsTrigger>
-            <TabsTrigger value="integrations" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <Plug className="h-4 w-4" />
-              <span>Integrações</span>
-            </TabsTrigger>
-            <TabsTrigger value="tokens" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <Key className="h-4 w-4" />
-              <span>Tokens</span>
-            </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <FileText className="h-4 w-4" />
-              <span>Modelos</span>
-            </TabsTrigger>
-            <TabsTrigger value="webhooks" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <Webhook className="h-4 w-4" />
-              <span>Webhooks</span>
-            </TabsTrigger>
-            <TabsTrigger value="sandbox" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <TestTube className="h-4 w-4" />
-              <span>Sandbox</span>
-            </TabsTrigger>
-            <TabsTrigger value="financial" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <DollarSign className="h-4 w-4" />
-              <span>Financeiro</span>
-            </TabsTrigger>
-            <TabsTrigger value="plans" className="gap-2 px-4 py-3 whitespace-nowrap flex-shrink-0">
-              <FileCheck className="h-4 w-4" />
-              <span>Planos</span>
-            </TabsTrigger>
-          </TabsList>
+        <Tabs defaultValue="account" className="space-y-6">
+          <div className="w-full overflow-x-auto scrollbar-hide">
+            <TabsList className="h-auto items-center gap-1">
+              <TabsTrigger value="account" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <User className="h-4 w-4" />
+                <span>Minha Conta</span>
+              </TabsTrigger>
+              <TabsTrigger value="users" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <Users className="h-4 w-4" />
+                <span>Usuários</span>
+              </TabsTrigger>
+              <TabsTrigger value="channels" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <MessageSquare className="h-4 w-4" />
+                <span>Canais</span>
+              </TabsTrigger>
+              <TabsTrigger value="integrations" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <Plug className="h-4 w-4" />
+                <span>Integrações</span>
+              </TabsTrigger>
+              <TabsTrigger value="tokens" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <Key className="h-4 w-4" />
+                <span>Tokens</span>
+              </TabsTrigger>
+              <TabsTrigger value="templates" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <FileText className="h-4 w-4" />
+                <span>Modelos</span>
+              </TabsTrigger>
+              <TabsTrigger value="webhooks" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <Webhook className="h-4 w-4" />
+                <span>Webhooks</span>
+              </TabsTrigger>
+              <TabsTrigger value="notifications" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <Bell className="h-4 w-4" />
+                <span>Notificações</span>
+              </TabsTrigger>
+              <TabsTrigger value="sandbox" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <TestTube className="h-4 w-4" />
+                <span>Sandbox</span>
+              </TabsTrigger>
+              <TabsTrigger value="financial" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <DollarSign className="h-4 w-4" />
+                <span>Financeiro</span>
+              </TabsTrigger>
+              <TabsTrigger value="plans" className="gap-2 px-3 py-2 whitespace-nowrap">
+                <FileCheck className="h-4 w-4" />
+                <span>Planos</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          {/* Minha Conta - Configurações Pessoais */}
+          <TabsContent value="account" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Informações da Conta</CardTitle>
+                <CardDescription>
+                  Gerencie suas informações pessoais e preferências
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Foto de Perfil */}
+                <div className="flex items-center gap-6">
+                  <div className="relative">
+                    <Avatar className="h-24 w-24">
+                      <AvatarImage src={avatarPreview || userProfile?.avatar_url || undefined} alt="Foto de perfil" />
+                      <AvatarFallback className="text-2xl">
+                        {profileFormData.full_name
+                          ? profileFormData.full_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                          : user?.email?.slice(0, 2).toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <label
+                      htmlFor="avatar-upload"
+                      className="absolute bottom-0 right-0 p-2 bg-primary text-primary-foreground rounded-full cursor-pointer hover:bg-primary/90 transition-colors"
+                    >
+                      <Camera className="h-4 w-4" />
+                      <input
+                        id="avatar-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleAvatarChange}
+                      />
+                    </label>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold mb-1">Foto de Perfil</h3>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Clique no ícone da câmera para alterar sua foto. Formatos aceitos: JPG, PNG (máx. 5MB)
+                    </p>
+                    {avatarFile && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setAvatarFile(null);
+                          setAvatarPreview(userProfile?.avatar_url || null);
+                        }}
+                      >
+                        Cancelar alteração
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {profileLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : (
+                  <>
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Nome completo</Label>
+                        <Input
+                          id="name"
+                          placeholder="Seu nome completo"
+                          value={profileFormData.full_name}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, full_name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="seu@email.com"
+                          value={profileFormData.email}
+                          onChange={(e) => setProfileFormData({ ...profileFormData, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <Separator />
+                    <div className="flex justify-end">
+                      <Button onClick={handleSaveProfile} disabled={loading}>
+                        {loading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          "Salvar alterações"
+                        )}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Alterar Senha</CardTitle>
+                <CardDescription>
+                  Atualize sua senha de acesso à plataforma
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="current-password">Senha atual</Label>
+                  <Input id="current-password" type="password" placeholder="Digite sua senha atual" />
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-password">Nova senha</Label>
+                    <Input id="new-password" type="password" placeholder="Digite sua nova senha" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                    <Input id="confirm-password" type="password" placeholder="Confirme sua nova senha" />
+                  </div>
+                </div>
+                <Separator />
+                <div className="flex justify-end">
+                  <Button>Alterar senha</Button>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Integração WhatsApp Pessoal</CardTitle>
+                <CardDescription>
+                  Configure sua conexão pessoal com WhatsApp Business
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-accent/10 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
+                      <Smartphone className="h-6 w-6 text-green-500" />
+                    </div>
+                    <div>
+                      <p className="font-medium">WhatsApp Business</p>
+                      <p className="text-sm text-muted-foreground">+55 11 99999-1234</p>
+                    </div>
+                  </div>
+                  <Button variant="outline">Desconectar</Button>
+                </div>
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="phone-id">Phone Number ID</Label>
+                  <Input id="phone-id" placeholder="Digite seu Phone Number ID" />
+                  <p className="text-xs text-muted-foreground">
+                    Encontre este ID no console do Meta Business
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="business-id">WhatsApp Business Account ID</Label>
+                  <Input id="business-id" placeholder="Digite seu Business Account ID" />
+                </div>
+                <Separator />
+                <div className="flex justify-end">
+                  <Button>Salvar configurações</Button>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="users" className="space-y-6">
             <Card>
@@ -772,6 +1109,58 @@ const OrganizationSettings = () => {
                       </TableRow>
                     </TableBody>
                   </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="notifications" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Preferências de Notificação</CardTitle>
+                <CardDescription>
+                  Configure como e quando você deseja receber notificações
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Notificações por e-mail</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Receba atualizações sobre suas campanhas
+                    </p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Relatórios semanais</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Resumo semanal de suas métricas
+                    </p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Alertas de falhas</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Seja notificado imediatamente sobre problemas
+                    </p>
+                  </div>
+                  <Switch defaultChecked />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Novas funcionalidades</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Fique por dentro das atualizações da plataforma
+                    </p>
+                  </div>
+                  <Switch />
                 </div>
               </CardContent>
             </Card>

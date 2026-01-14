@@ -78,8 +78,8 @@ const App = () => (
           <Route path="/dashboard/bot-config" element={<ProtectedRoute><BotConfig /></ProtectedRoute>} />
           
           {/* Admin Only Routes */}
-          <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
-          <Route path="/dashboard/organization-settings" element={<ProtectedRoute requireAdmin><OrganizationSettings /></ProtectedRoute>} />
+          <Route path="/dashboard/admin" element={<ProtectedRoute requireMasterAdmin><Admin /></ProtectedRoute>} />
+          <Route path="/dashboard/organization-settings" element={<ProtectedRoute><OrganizationSettings /></ProtectedRoute>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
