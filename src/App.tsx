@@ -30,6 +30,8 @@ import Suggestions from "./pages/Suggestions";
 import ChatInbox from "./pages/ChatInbox";
 import BotConfig from "./pages/BotConfig";
 import OrganizationSettings from "./pages/OrganizationSettings";
+import Pricing from "./pages/Pricing";
+import Billing from "./pages/Billing";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -76,6 +78,8 @@ const App = () => (
           <Route path="/dashboard/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
           <Route path="/dashboard/chat-inbox" element={<ProtectedRoute><ChatInbox /></ProtectedRoute>} />
           <Route path="/dashboard/bot-config" element={<ProtectedRoute><BotConfig /></ProtectedRoute>} />
+          <Route path="/dashboard/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+          <Route path="/dashboard/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
           
           {/* Admin Only Routes */}
           <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />

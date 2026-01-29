@@ -5,8 +5,9 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Smartphone, Key, Webhook, Bell, User } from "lucide-react";
+import { Smartphone, Key, Webhook, Bell, User, CreditCard } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
+import { SubscriptionManagement } from "@/components/subscription/SubscriptionManagement";
 
 const Settings = () => {
   return (
@@ -36,6 +37,10 @@ const Settings = () => {
             <TabsTrigger value="notifications">
               <Bell className="mr-2 h-4 w-4" />
               Notificações
+            </TabsTrigger>
+            <TabsTrigger value="subscription">
+              <CreditCard className="mr-2 h-4 w-4" />
+              Assinatura
             </TabsTrigger>
           </TabsList>
 
@@ -226,6 +231,11 @@ const Settings = () => {
                 </div>
               </div>
             </Card>
+          </TabsContent>
+
+          {/* Subscription Settings */}
+          <TabsContent value="subscription" className="space-y-6">
+            <SubscriptionManagement />
           </TabsContent>
         </Tabs>
       </div>
