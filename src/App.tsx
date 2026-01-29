@@ -33,6 +33,7 @@ import OrganizationSettings from "./pages/OrganizationSettings";
 import Pricing from "./pages/Pricing";
 import Billing from "./pages/Billing";
 import UsageDashboard from "./pages/UsageDashboard";
+import ApiKeys from "./pages/ApiKeys";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -82,6 +83,7 @@ const App = () => (
           <Route path="/dashboard/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
           <Route path="/dashboard/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
           <Route path="/dashboard/usage" element={<ProtectedRoute><UsageDashboard /></ProtectedRoute>} />
+          <Route path="/dashboard/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
           
           {/* Admin Only Routes */}
           <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
