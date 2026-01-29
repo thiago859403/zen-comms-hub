@@ -68,7 +68,7 @@ export const useDashboardData = () => {
         // Fetch user profile
         const { data: profileData } = await supabase
           .from('profiles')
-          .select('full_name, email, plan, org_id')
+          .select('full_name, email, empresa_id')
           .eq('id', user.id)
           .single();
 
@@ -81,16 +81,31 @@ export const useDashboardData = () => {
             .toUpperCase()
             .slice(0, 2);
 
-          // Fetch organization name
-          let orgName = 'Minha Organização';
-          if (profileData.org_id) {
-            const { data: orgData } = await supabase
-              .from('organizations')
-              .select('name')
-              .eq('id', profileData.org_id)
+          // Fetch empresa name
+          let orgName = 'Minha Empresa';
+          if (profileData.empresa_id) {
+            const { data: empresaData } = await supabase
+              .from('empresas')
+              .select('nome, plano_id')
+              .eq('id', profileData.empresa_id)
               .single();
-            if (orgData) {
-              orgName = orgData.name;
+            if (empresaData) {
+              orgName = empresaData.nome;
+              
+              // Fetch plano info if exists
+              if (empresaData.plano_id) {
+                const { data: planoData } = await supabase
+                  .from('planos')
+                  .select('nome')
+                  .eq('id', empresaData.plano_id)
+                  .single();
+                if (planoData) {
+                  setPlanInfo(prev => ({
+                    ...prev,
+                    name: planoData.nome,
+                  }));
+                }
+              }
             }
           }
 
@@ -100,16 +115,6 @@ export const useDashboardData = () => {
             avatarInitials: initials,
             organizationName: orgName,
           });
-
-          // Update plan info based on profile
-          if (profileData.plan) {
-            setPlanInfo(prev => ({
-              ...prev,
-              name: profileData.plan === 'free' ? 'Free' : 
-                    profileData.plan === 'pro' ? 'Pro' : 
-                    profileData.plan === 'expert' ? 'Expert' : profileData.plan,
-            }));
-          }
         }
 
         // Fetch conversations stats
