@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { Settings, Users, UserPlus, Search, Mail, Loader2, Trash2, MessageSquare, Plug, Key, FileText, Webhook, TestTube, DollarSign, FileCheck, Copy, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from "lucide-react";
 
 interface UserProfile {
@@ -26,6 +27,7 @@ interface UserProfile {
 
 const OrganizationSettings = () => {
   const { toast } = useToast();
+  const { empresaId } = useAuth();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,40 +36,42 @@ const OrganizationSettings = () => {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
 
   useEffect(() => {
-    loadUsers();
-  }, []);
+    if (empresaId) {
+      loadUsers();
+    }
+  }, [empresaId]);
 
   const loadUsers = async () => {
+    if (!empresaId) {
+      toast({
+        title: "Erro",
+        description: "Empresa não encontrada",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       
-      // Buscar perfis de usuários
+      // Buscar perfis de usuários da mesma empresa
       const { data: profiles, error: profilesError } = await supabase
         .from("profiles")
         .select("*")
+        .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false });
 
       if (profilesError) throw profilesError;
 
-      // Buscar roles de cada usuário
-      const usersWithRoles = await Promise.all(
-        (profiles || []).map(async (profile) => {
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", profile.id)
-            .single();
-
-          return {
-            id: profile.id,
-            email: profile.email,
-            full_name: profile.full_name,
-            status: profile.status || "active",
-            role: roleData?.role || "user",
-            created_at: profile.created_at
-          };
-        })
-      );
+      // Usar role diretamente do profile (já migrado no PRD)
+      const usersWithRoles = (profiles || []).map((profile) => ({
+        id: profile.id,
+        email: profile.email,
+        full_name: profile.full_name,
+        status: profile.status || "active",
+        role: profile.role || "user", // Usar role do profile
+        created_at: profile.created_at
+      }));
 
       setUsers(usersWithRoles);
     } catch (error: any) {
