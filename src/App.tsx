@@ -37,6 +37,8 @@ import ApiKeys from "./pages/ApiKeys";
 import TeamManagement from "./pages/TeamManagement";
 import AIAgents from "./pages/AIAgents";
 import IAContext from "./pages/IAContext";
+import AdminDashboard from "./pages/AdminDashboard";
+import MasterDashboard from "./pages/MasterDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -90,9 +92,11 @@ const App = () => (
           <Route path="/dashboard/team" element={<ProtectedRoute><TeamManagement /></ProtectedRoute>} />
           <Route path="/dashboard/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
           <Route path="/dashboard/ia-context" element={<ProtectedRoute><IAContext /></ProtectedRoute>} />
+          <Route path="/dashboard/admin-dashboard" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
           
           {/* Admin Only Routes */}
           <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
+          <Route path="/dashboard/master" element={<ProtectedRoute><MasterDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/organization-settings" element={<ProtectedRoute requireAdmin><OrganizationSettings /></ProtectedRoute>} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

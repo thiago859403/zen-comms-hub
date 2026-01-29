@@ -7,6 +7,8 @@ interface DashboardStats {
   contactsReached: number;
   contactsAttended: number;
   conversionRate: number;
+  userConversations: number;
+  userMessages: number;
   isLoading: boolean;
 }
 
@@ -37,6 +39,8 @@ export const useDashboardData = () => {
     contactsReached: 0,
     contactsAttended: 0,
     conversionRate: 0,
+    userConversations: 0,
+    userMessages: 0,
     isLoading: true,
   });
 
@@ -117,17 +121,50 @@ export const useDashboardData = () => {
           });
         }
 
-        // Fetch conversations stats
-        const { count: totalConversations } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true });
+        // Fetch conversations stats (filtrado por empresa_id)
+        let totalConversations = 0;
+        let attendedConversations = 0;
+        let userConversations = 0;
+        let userMessages = 0;
 
-        const { count: attendedConversations } = await supabase
-          .from('conversations')
-          .select('*', { count: 'exact', head: true })
-          .not('assigned_agent_id', 'is', null);
+        if (profileData.empresa_id) {
+          // Total de conversas da empresa
+          const { count: total } = await supabase
+            .from('conversations')
+            .select('*', { count: 'exact', head: true })
+            .eq('empresa_id', profileData.empresa_id);
 
-        // Fetch messages stats
+          totalConversations = total || 0;
+
+          // Conversas atendidas (com assigned_agent_id)
+          const { count: attended } = await supabase
+            .from('conversations')
+            .select('*', { count: 'exact', head: true })
+            .eq('empresa_id', profileData.empresa_id)
+            .not('assigned_agent_id', 'is', null);
+
+          attendedConversations = attended || 0;
+
+          // Conversas atendidas pelo usuário atual
+          const { count: userConv } = await supabase
+            .from('conversations')
+            .select('*', { count: 'exact', head: true })
+            .eq('empresa_id', profileData.empresa_id)
+            .eq('assigned_agent_id', user.id);
+
+          userConversations = userConv || 0;
+
+          // Mensagens enviadas pelo usuário atual
+          const { count: userMsg } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('sender_id', user.id)
+            .eq('sender_type', 'agent');
+
+          userMessages = userMsg || 0;
+        }
+
+        // Fetch messages stats (total da empresa)
         const { count: totalMessages } = await supabase
           .from('messages')
           .select('*', { count: 'exact', head: true });
@@ -141,6 +178,8 @@ export const useDashboardData = () => {
           contactsReached: reached,
           contactsAttended: attended,
           conversionRate: Math.round(rate * 10) / 10,
+          userConversations: userConversations,
+          userMessages: userMessages,
           isLoading: false,
         });
 
