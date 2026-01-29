@@ -35,6 +35,8 @@ import Billing from "./pages/Billing";
 import UsageDashboard from "./pages/UsageDashboard";
 import ApiKeys from "./pages/ApiKeys";
 import TeamManagement from "./pages/TeamManagement";
+import AIAgents from "./pages/AIAgents";
+import IAContext from "./pages/IAContext";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -86,6 +88,8 @@ const App = () => (
           <Route path="/dashboard/usage" element={<ProtectedRoute><UsageDashboard /></ProtectedRoute>} />
           <Route path="/dashboard/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
           <Route path="/dashboard/team" element={<ProtectedRoute><TeamManagement /></ProtectedRoute>} />
+          <Route path="/dashboard/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
+          <Route path="/dashboard/ia-context" element={<ProtectedRoute><IAContext /></ProtectedRoute>} />
           
           {/* Admin Only Routes */}
           <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />

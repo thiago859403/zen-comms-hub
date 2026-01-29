@@ -201,10 +201,10 @@ async function processAIMode(
   conversationId: string
 ): Promise<string> {
   try {
-    // Buscar empresa_id da conversa
+    // Buscar empresa_id e agente_id da conversa
     const { data: conversation } = await supabaseClient
       .from('conversations')
-      .select('empresa_id, tokens_usados')
+      .select('empresa_id, tokens_usados, agente_id')
       .eq('id', conversationId)
       .single();
 
@@ -267,6 +267,36 @@ async function processAIMode(
       }
     }
 
+    // Buscar agente de IA se especificado na conversa
+    let agenteInstrucoes = '';
+    let contextoEmpresa = '';
+    
+    if (conversation?.agente_id) {
+      const { data: agente } = await supabaseClient
+        .from('agentes_ia')
+        .select('instrucoes')
+        .eq('id', conversation.agente_id)
+        .eq('status', 'active')
+        .single();
+      
+      if (agente) {
+        agenteInstrucoes = agente.instrucoes;
+      }
+    }
+
+    // Buscar contexto da empresa se disponível
+    if (conversation?.empresa_id) {
+      const { data: empresa } = await supabaseClient
+        .from('empresas')
+        .select('contexto_ia')
+        .eq('id', conversation.empresa_id)
+        .single();
+      
+      if (empresa?.contexto_ia && typeof empresa.contexto_ia === 'object') {
+        contextoEmpresa = JSON.stringify(empresa.contexto_ia);
+      }
+    }
+
     // Get knowledge base if enabled
     let knowledgeContext = '';
     if (botConfig.knowledge_base_enabled) {
@@ -274,7 +304,11 @@ async function processAIMode(
       knowledgeContext = 'Base de conhecimento disponível.';
     }
 
-    const systemPrompt = `${botConfig.ai_instructions}
+    // Usar instruções do agente se disponível, senão usar do bot_config
+    const instrucoesBase = agenteInstrucoes || botConfig.ai_instructions;
+    
+    const systemPrompt = `${instrucoesBase}
+${contextoEmpresa ? `\n\nContexto da Empresa:\n${contextoEmpresa}` : ''}
 
 Personalidade: ${botConfig.ai_personality}
 
