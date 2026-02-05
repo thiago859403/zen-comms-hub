@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -60,48 +61,265 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
+        <AuthProvider>
+          <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/login" element={<AdminLogin />} />
-          
+
           {/* Protected Dashboard Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/campaigns" element={<ProtectedRoute><Campaigns /></ProtectedRoute>} />
-          <Route path="/dashboard/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
-          <Route path="/dashboard/chats" element={<ProtectedRoute><Chats /></ProtectedRoute>} />
-          <Route path="/dashboard/templates" element={<ProtectedRoute><Templates /></ProtectedRoute>} />
-          <Route path="/dashboard/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path="/dashboard/message-sending" element={<ProtectedRoute><MessageSending /></ProtectedRoute>} />
-          <Route path="/dashboard/announcements" element={<ProtectedRoute><Announcements /></ProtectedRoute>} />
-          <Route path="/dashboard/commercial-support" element={<ProtectedRoute><CommercialSupport /></ProtectedRoute>} />
-          <Route path="/dashboard/customer-support" element={<ProtectedRoute><CustomerSupport /></ProtectedRoute>} />
-          <Route path="/dashboard/chatbots" element={<ProtectedRoute><ChatbotList /></ProtectedRoute>} />
-          <Route path="/dashboard/knowledge-bases" element={<ProtectedRoute><KnowledgeBases /></ProtectedRoute>} />
-          <Route path="/dashboard/conversations" element={<ProtectedRoute><Conversations /></ProtectedRoute>} />
-          <Route path="/dashboard/flow-map" element={<ProtectedRoute><FlowMap /></ProtectedRoute>} />
-          <Route path="/dashboard/specialist-agents" element={<ProtectedRoute><SpecialistAgents /></ProtectedRoute>} />
-          <Route path="/dashboard/analytics" element={<ProtectedRoute><Analytics /></ProtectedRoute>} />
-          <Route path="/dashboard/suggestions" element={<ProtectedRoute><Suggestions /></ProtectedRoute>} />
-          <Route path="/dashboard/chat-inbox" element={<ProtectedRoute><ChatInbox /></ProtectedRoute>} />
-          <Route path="/dashboard/bot-config" element={<ProtectedRoute><BotConfig /></ProtectedRoute>} />
-          <Route path="/dashboard/pricing" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
-          <Route path="/dashboard/billing" element={<ProtectedRoute><Billing /></ProtectedRoute>} />
-          <Route path="/dashboard/usage" element={<ProtectedRoute><UsageDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/api-keys" element={<ProtectedRoute><ApiKeys /></ProtectedRoute>} />
-          <Route path="/dashboard/team" element={<ProtectedRoute><TeamManagement /></ProtectedRoute>} />
-          <Route path="/dashboard/ai-agents" element={<ProtectedRoute><AIAgents /></ProtectedRoute>} />
-          <Route path="/dashboard/ia-context" element={<ProtectedRoute><IAContext /></ProtectedRoute>} />
-          <Route path="/dashboard/admin-dashboard" element={<ProtectedRoute requireAdmin><AdminDashboard /></ProtectedRoute>} />
-          
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/campaigns"
+            element={
+              <ProtectedRoute>
+                <Campaigns />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/contacts"
+            element={
+              <ProtectedRoute>
+                <Contacts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/chats"
+            element={
+              <ProtectedRoute>
+                <Chats />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/templates"
+            element={
+              <ProtectedRoute>
+                <Templates />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/settings"
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/message-sending"
+            element={
+              <ProtectedRoute>
+                <MessageSending />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/announcements"
+            element={
+              <ProtectedRoute>
+                <Announcements />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/commercial-support"
+            element={
+              <ProtectedRoute>
+                <CommercialSupport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/customer-support"
+            element={
+              <ProtectedRoute>
+                <CustomerSupport />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/chatbots"
+            element={
+              <ProtectedRoute>
+                <ChatbotList />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/knowledge-bases"
+            element={
+              <ProtectedRoute>
+                <KnowledgeBases />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/conversations"
+            element={
+              <ProtectedRoute>
+                <Conversations />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/flow-map"
+            element={
+              <ProtectedRoute>
+                <FlowMap />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ✅ Página Beta/Marketing */}
+          <Route
+            path="/dashboard/specialist-agents"
+            element={
+              <ProtectedRoute>
+                <SpecialistAgents />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/analytics"
+            element={
+              <ProtectedRoute>
+                <Analytics />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/suggestions"
+            element={
+              <ProtectedRoute>
+                <Suggestions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/chat-inbox"
+            element={
+              <ProtectedRoute>
+                <ChatInbox />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/bot-config"
+            element={
+              <ProtectedRoute>
+                <BotConfig />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/pricing"
+            element={
+              <ProtectedRoute>
+                <Pricing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/billing"
+            element={
+              <ProtectedRoute>
+                <Billing />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/usage"
+            element={
+              <ProtectedRoute>
+                <UsageDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/api-keys"
+            element={
+              <ProtectedRoute>
+                <ApiKeys />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/team"
+            element={
+              <ProtectedRoute>
+                <TeamManagement />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* ✅ Página Oficial (usada nos testes) */}
+          <Route
+            path="/dashboard/ai-agents"
+            element={
+              <ProtectedRoute>
+                <AIAgents />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/dashboard/ia-context"
+            element={
+              <ProtectedRoute>
+                <IAContext />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/admin-dashboard"
+            element={
+              <ProtectedRoute requireAdmin>
+                <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+
           {/* Admin Only Routes */}
-          <Route path="/dashboard/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
-          <Route path="/dashboard/master" element={<ProtectedRoute><MasterDashboard /></ProtectedRoute>} />
-          <Route path="/dashboard/organization-settings" element={<ProtectedRoute requireAdmin><OrganizationSettings /></ProtectedRoute>} />
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+          <Route
+            path="/dashboard/admin"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Admin />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/master"
+            element={
+              <ProtectedRoute>
+                <MasterDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard/organization-settings"
+            element={
+              <ProtectedRoute requireAdmin>
+                <OrganizationSettings />
+              </ProtectedRoute>
+            }
+          />
+
           <Route path="*" element={<NotFound />} />
-        </Routes>
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

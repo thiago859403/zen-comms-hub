@@ -105,13 +105,10 @@ export default function Auth() {
             full_name: signupData.full_name,
             company: signupData.company || '',
           },
-          // Não incluir emailRedirectTo se confirmação de email estiver desabilitada
-          // Isso evita problemas com URLs não configuradas no Supabase
         },
       });
 
       if (error) {
-        // Melhor tratamento de erros específicos do Supabase
         if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
           throw new Error(
             'Chave de API inválida. Por favor, reinicie o servidor de desenvolvimento (pnpm dev) para carregar as variáveis de ambiente atualizadas.'
@@ -120,12 +117,27 @@ export default function Auth() {
         throw error;
       }
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Você já pode acessar sua conta",
-      });
 
-      navigate("/dashboard");
+      // Aguardar a sessão ser confirmada antes de navegar
+      if (data.session) {
+        // Sessão criada imediatamente (email confirmation disabled)
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Você já pode acessar sua conta",
+        });
+        
+        // Pequeno delay para garantir que o onAuthStateChange foi disparado
+        // e que o AuthProvider já processou a nova sessão
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        navigate("/dashboard", { replace: true });
+      } else if (data.user) {
+        // Usuário criado mas sem sessão (aguardando confirmação de email)
+        toast({
+          title: "Conta criada!",
+          description: "Verifique seu email para confirmar o cadastro",
+        });
+      }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
