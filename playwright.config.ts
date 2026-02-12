@@ -31,13 +31,8 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
     },
     // Firefox e WebKit apenas local — CI roda só chromium via --project flag
     ...(!isCI
@@ -45,12 +40,10 @@ export default defineConfig({
           {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            dependencies: ['setup'],
           },
           {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            dependencies: ['setup'],
           },
         ]
       : []),
