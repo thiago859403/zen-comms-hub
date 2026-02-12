@@ -1,4 +1,4 @@
-﻿name: E2E (Playwright)
+name: E2E (Playwright)
 
 on:
   pull_request:
@@ -46,7 +46,7 @@ jobs:
         timeout-minutes: 3
 
       - name: Start preview server
-        run: pnpm preview --host 0.0.0.0 --port 4173 &
+        run: pnpm preview --host 127.0.0.1 --port 4173 &
         timeout-minutes: 1
 
       - name: Wait for server to be ready
