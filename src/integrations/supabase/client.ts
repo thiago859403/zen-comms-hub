@@ -34,25 +34,38 @@ if (import.meta.env.DEV) {
   });
 }
 
-if (!SUPABASE_URL || !SUPABASE_KEY) {
+const SUPABASE_CONFIGURED = !!(SUPABASE_URL && SUPABASE_KEY);
+
+if (!SUPABASE_CONFIGURED) {
   const errorMsg = `Missing Supabase environment variables.
     VITE_SUPABASE_URL: ${SUPABASE_URL ? '✓' : '✗'}
     VITE_SUPABASE_PUBLISHABLE_KEY: ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? '✓' : '✗'}
     VITE_SUPABASE_ANON_KEY: ${import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓' : '✗'}
     
-    Please ensure VITE_SUPABASE_URL and either VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY are set in your .env.local file.`;
+    Please ensure VITE_SUPABASE_URL and either VITE_SUPABASE_PUBLISHABLE_KEY or VITE_SUPABASE_ANON_KEY are set in your .env.local file.
+    In CI, add them as GitHub Secrets (Settings → Secrets → Actions).`;
   console.error(errorMsg);
-  throw new Error(errorMsg);
+  // NÃO lançar throw aqui — isso crasha todo o React antes de montar.
+  // O app renderiza mas as chamadas Supabase vão falhar graciosamente.
 }
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    storage: localStorage,
-    persistSession: true,
-    autoRefreshToken: true,
-    detectSessionInUrl: true,
+// Quando env vars estão ausentes, usa placeholders para que o client seja criado
+// sem crashar. Chamadas API vão falhar com erro de rede (não crash no boot).
+export const supabase = createClient<Database>(
+  SUPABASE_URL || 'https://placeholder.supabase.co',
+  SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSJ9.placeholder',
+  {
+    auth: {
+      storage: typeof localStorage !== 'undefined' ? localStorage : undefined,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+    },
   }
-});
+);
+
+/** Indica se o Supabase está configurado corretamente */
+export { SUPABASE_CONFIGURED };

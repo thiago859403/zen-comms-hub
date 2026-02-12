@@ -23,7 +23,7 @@ export default defineConfig({
   expect: { timeout: 15_000 },
 
   use: {
-    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://127.0.0.1:4173',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -31,13 +31,8 @@ export default defineConfig({
 
   projects: [
     {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
     },
     // Firefox e WebKit apenas local — CI roda só chromium via --project flag
     ...(!isCI
@@ -45,23 +40,21 @@ export default defineConfig({
           {
             name: 'firefox',
             use: { ...devices['Desktop Firefox'] },
-            dependencies: ['setup'],
           },
           {
             name: 'webkit',
             use: { ...devices['Desktop Safari'] },
-            dependencies: ['setup'],
           },
         ]
       : []),
   ],
 
-  // Em CI o workflow sobe o preview server; local usa pnpm dev
+  // Em CI o workflow sobe o preview server; local usa build+preview na mesma porta
   webServer: isCI
     ? undefined
     : {
-        command: 'pnpm dev',
-        url: 'http://localhost:3000',
+        command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4173',
+        url: 'http://127.0.0.1:4173',
         reuseExistingServer: true,
         timeout: 120_000,
       },
