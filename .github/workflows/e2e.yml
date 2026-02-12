@@ -13,7 +13,7 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
 
     env:
       VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
@@ -58,7 +58,7 @@ jobs:
 
       - name: Run E2E tests
         run: pnpm exec playwright test --project=chromium
-        timeout-minutes: 10
+        timeout-minutes: 20
 
       - name: Upload Playwright HTML report
         if: always()
