@@ -3,66 +3,101 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Suspense, lazy, useEffect } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { initMonitoring } from "@/lib/monitoring";
+import { Loader2 } from "lucide-react";
+
+// Páginas públicas (carregamento imediato)
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
-import Dashboard from "./pages/Dashboard";
-import Campaigns from "./pages/Campaigns";
-import Contacts from "./pages/Contacts";
-import Chats from "./pages/Chats";
-import Templates from "./pages/Templates";
-import Settings from "./pages/Settings";
-import Admin from "./pages/Admin";
 import NotFound from "./pages/NotFound";
-import MessageSending from "./pages/MessageSending";
-import Announcements from "./pages/Announcements";
-import CommercialSupport from "./pages/CommercialSupport";
-import CustomerSupport from "./pages/CustomerSupport";
-import ChatbotList from "./pages/ChatbotList";
-import KnowledgeBases from "./pages/KnowledgeBases";
-import Conversations from "./pages/Conversations";
-import FlowMap from "./pages/FlowMap";
-import SpecialistAgents from "./pages/SpecialistAgents";
-import Analytics from "./pages/Analytics";
-import Suggestions from "./pages/Suggestions";
 
-import ChatInbox from "./pages/ChatInbox";
-import BotConfig from "./pages/BotConfig";
-import OrganizationSettings from "./pages/OrganizationSettings";
-import Pricing from "./pages/Pricing";
-import Billing from "./pages/Billing";
-import UsageDashboard from "./pages/UsageDashboard";
-import ApiKeys from "./pages/ApiKeys";
-import TeamManagement from "./pages/TeamManagement";
-import AIAgents from "./pages/AIAgents";
-import IAContext from "./pages/IAContext";
-import AdminDashboard from "./pages/AdminDashboard";
-import MasterDashboard from "./pages/MasterDashboard";
+// Páginas protegidas (lazy loading)
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const Campaigns = lazy(() => import("./pages/Campaigns"));
+const Contacts = lazy(() => import("./pages/Contacts"));
+const Chats = lazy(() => import("./pages/Chats"));
+const Templates = lazy(() => import("./pages/Templates"));
+const Settings = lazy(() => import("./pages/Settings"));
+const Admin = lazy(() => import("./pages/Admin"));
+const MessageSending = lazy(() => import("./pages/MessageSending"));
+const Announcements = lazy(() => import("./pages/Announcements"));
+const CommercialSupport = lazy(() => import("./pages/CommercialSupport"));
+const CustomerSupport = lazy(() => import("./pages/CustomerSupport"));
+const ChatbotList = lazy(() => import("./pages/ChatbotList"));
+const KnowledgeBases = lazy(() => import("./pages/KnowledgeBases"));
+const Conversations = lazy(() => import("./pages/Conversations"));
+const FlowMap = lazy(() => import("./pages/FlowMap"));
+const SpecialistAgents = lazy(() => import("./pages/SpecialistAgents"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const Suggestions = lazy(() => import("./pages/Suggestions"));
+const ChatInbox = lazy(() => import("./pages/ChatInbox"));
+const BotConfig = lazy(() => import("./pages/BotConfig"));
+const OrganizationSettings = lazy(() => import("./pages/OrganizationSettings"));
+const Pricing = lazy(() => import("./pages/Pricing"));
+const Billing = lazy(() => import("./pages/Billing"));
+const UsageDashboard = lazy(() => import("./pages/UsageDashboard"));
+const ApiKeys = lazy(() => import("./pages/ApiKeys"));
+const TeamManagement = lazy(() => import("./pages/TeamManagement"));
+const AIAgents = lazy(() => import("./pages/AIAgents"));
+const IAContext = lazy(() => import("./pages/IAContext"));
+const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
+const MasterDashboard = lazy(() => import("./pages/MasterDashboard"));
 
+// Fallback de loading para Suspense
+const PageLoader = () => (
+  <div className="flex items-center justify-center min-h-screen bg-background">
+    <div className="text-center space-y-4">
+      <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" />
+      <p className="text-sm text-muted-foreground">Carregando...</p>
+    </div>
+  </div>
+);
+
+// React Query config otimizado (EPIC 6.3.2)
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5 * 60 * 1000,
-      gcTime: 10 * 60 * 1000,
-      retry: 1,
-      refetchOnWindowFocus: false,
+      staleTime: 5 * 60 * 1000, // 5 minutos - dados considerados frescos
+      gcTime: 10 * 60 * 1000, // 10 minutos - tempo de cache (antigo cacheTime)
+      retry: (failureCount, error: any) => {
+        // Não retry em erros 4xx (client errors)
+        if (error?.status >= 400 && error?.status < 500) {
+          return false;
+        }
+        // Retry até 2 vezes para erros de rede/5xx
+        return failureCount < 2;
+      },
+      refetchOnWindowFocus: false, // Evitar refetch desnecessário
+      refetchOnMount: true, // Refetch ao montar componente (garante dados atualizados)
+      refetchOnReconnect: true, // Refetch ao reconectar
     },
     mutations: {
-      retry: 0,
+      retry: 0, // Nunca retry mutations
     },
   },
 });
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
+const App = () => {
+  // Inicializar monitoramento no boot (EPIC 6.3.3)
+  useEffect(() => {
+    initMonitoring({
+      environment: import.meta.env.VITE_APP_ENV || 'development',
+      release: import.meta.env.VITE_APP_VERSION || 'unknown',
+    });
+  }, []);
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/login" element={<AdminLogin />} />
@@ -72,7 +107,20 @@ const App = () => (
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Suspense fallback={<PageLoader />}>
+                  <Dashboard />
+                </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          {/* Protected Dashboard Routes */}
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Suspense fallback={<PageLoader />}>
+                  <Dashboard />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -80,7 +128,9 @@ const App = () => (
             path="/dashboard/campaigns"
             element={
               <ProtectedRoute>
-                <Campaigns />
+                <Suspense fallback={<PageLoader />}>
+                  <Campaigns />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -88,7 +138,9 @@ const App = () => (
             path="/dashboard/contacts"
             element={
               <ProtectedRoute>
-                <Contacts />
+                <Suspense fallback={<PageLoader />}>
+                  <Contacts />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -96,7 +148,9 @@ const App = () => (
             path="/dashboard/chats"
             element={
               <ProtectedRoute>
-                <Chats />
+                <Suspense fallback={<PageLoader />}>
+                  <Chats />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -104,7 +158,9 @@ const App = () => (
             path="/dashboard/templates"
             element={
               <ProtectedRoute>
-                <Templates />
+                <Suspense fallback={<PageLoader />}>
+                  <Templates />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -112,7 +168,9 @@ const App = () => (
             path="/dashboard/settings"
             element={
               <ProtectedRoute>
-                <Settings />
+                <Suspense fallback={<PageLoader />}>
+                  <Settings />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -120,7 +178,9 @@ const App = () => (
             path="/dashboard/message-sending"
             element={
               <ProtectedRoute>
-                <MessageSending />
+                <Suspense fallback={<PageLoader />}>
+                  <MessageSending />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -128,7 +188,9 @@ const App = () => (
             path="/dashboard/announcements"
             element={
               <ProtectedRoute>
-                <Announcements />
+                <Suspense fallback={<PageLoader />}>
+                  <Announcements />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -136,7 +198,9 @@ const App = () => (
             path="/dashboard/commercial-support"
             element={
               <ProtectedRoute>
-                <CommercialSupport />
+                <Suspense fallback={<PageLoader />}>
+                  <CommercialSupport />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -144,7 +208,9 @@ const App = () => (
             path="/dashboard/customer-support"
             element={
               <ProtectedRoute>
-                <CustomerSupport />
+                <Suspense fallback={<PageLoader />}>
+                  <CustomerSupport />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -152,7 +218,9 @@ const App = () => (
             path="/dashboard/chatbots"
             element={
               <ProtectedRoute>
-                <ChatbotList />
+                <Suspense fallback={<PageLoader />}>
+                  <ChatbotList />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -160,7 +228,9 @@ const App = () => (
             path="/dashboard/knowledge-bases"
             element={
               <ProtectedRoute>
-                <KnowledgeBases />
+                <Suspense fallback={<PageLoader />}>
+                  <KnowledgeBases />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -168,7 +238,9 @@ const App = () => (
             path="/dashboard/conversations"
             element={
               <ProtectedRoute>
-                <Conversations />
+                <Suspense fallback={<PageLoader />}>
+                  <Conversations />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -176,7 +248,9 @@ const App = () => (
             path="/dashboard/flow-map"
             element={
               <ProtectedRoute>
-                <FlowMap />
+                <Suspense fallback={<PageLoader />}>
+                  <FlowMap />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -186,7 +260,9 @@ const App = () => (
             path="/dashboard/specialist-agents"
             element={
               <ProtectedRoute>
-                <SpecialistAgents />
+                <Suspense fallback={<PageLoader />}>
+                  <SpecialistAgents />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -195,7 +271,9 @@ const App = () => (
             path="/dashboard/analytics"
             element={
               <ProtectedRoute>
-                <Analytics />
+                <Suspense fallback={<PageLoader />}>
+                  <Analytics />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -203,7 +281,9 @@ const App = () => (
             path="/dashboard/suggestions"
             element={
               <ProtectedRoute>
-                <Suggestions />
+                <Suspense fallback={<PageLoader />}>
+                  <Suggestions />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -211,7 +291,9 @@ const App = () => (
             path="/dashboard/chat-inbox"
             element={
               <ProtectedRoute>
-                <ChatInbox />
+                <Suspense fallback={<PageLoader />}>
+                  <ChatInbox />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -219,7 +301,9 @@ const App = () => (
             path="/dashboard/bot-config"
             element={
               <ProtectedRoute>
-                <BotConfig />
+                <Suspense fallback={<PageLoader />}>
+                  <BotConfig />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -227,7 +311,9 @@ const App = () => (
             path="/dashboard/pricing"
             element={
               <ProtectedRoute>
-                <Pricing />
+                <Suspense fallback={<PageLoader />}>
+                  <Pricing />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -235,7 +321,9 @@ const App = () => (
             path="/dashboard/billing"
             element={
               <ProtectedRoute>
-                <Billing />
+                <Suspense fallback={<PageLoader />}>
+                  <Billing />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -243,7 +331,9 @@ const App = () => (
             path="/dashboard/usage"
             element={
               <ProtectedRoute>
-                <UsageDashboard />
+                <Suspense fallback={<PageLoader />}>
+                  <UsageDashboard />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -251,7 +341,9 @@ const App = () => (
             path="/dashboard/api-keys"
             element={
               <ProtectedRoute>
-                <ApiKeys />
+                <Suspense fallback={<PageLoader />}>
+                  <ApiKeys />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -259,7 +351,9 @@ const App = () => (
             path="/dashboard/team"
             element={
               <ProtectedRoute>
-                <TeamManagement />
+                <Suspense fallback={<PageLoader />}>
+                  <TeamManagement />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -269,7 +363,9 @@ const App = () => (
             path="/dashboard/ai-agents"
             element={
               <ProtectedRoute>
-                <AIAgents />
+                <Suspense fallback={<PageLoader />}>
+                  <AIAgents />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -278,7 +374,9 @@ const App = () => (
             path="/dashboard/ia-context"
             element={
               <ProtectedRoute>
-                <IAContext />
+                <Suspense fallback={<PageLoader />}>
+                  <IAContext />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -286,7 +384,9 @@ const App = () => (
             path="/dashboard/admin-dashboard"
             element={
               <ProtectedRoute requireAdmin>
-                <AdminDashboard />
+                <Suspense fallback={<PageLoader />}>
+                  <AdminDashboard />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -296,7 +396,9 @@ const App = () => (
             path="/dashboard/admin"
             element={
               <ProtectedRoute requireAdmin>
-                <Admin />
+                <Suspense fallback={<PageLoader />}>
+                  <Admin />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -304,7 +406,9 @@ const App = () => (
             path="/dashboard/master"
             element={
               <ProtectedRoute>
-                <MasterDashboard />
+                <Suspense fallback={<PageLoader />}>
+                  <MasterDashboard />
+                </Suspense>
               </ProtectedRoute>
             }
           />
@@ -312,17 +416,20 @@ const App = () => (
             path="/dashboard/organization-settings"
             element={
               <ProtectedRoute requireAdmin>
-                <OrganizationSettings />
+                <Suspense fallback={<PageLoader />}>
+                  <OrganizationSettings />
+                </Suspense>
               </ProtectedRoute>
             }
           />
 
           <Route path="*" element={<NotFound />} />
-          </Routes>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+            </Routes>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
