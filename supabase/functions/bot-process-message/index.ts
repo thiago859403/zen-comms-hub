@@ -84,7 +84,7 @@ serve(async (req) => {
           break;
           
         case 'ai':
-          botResponse = await processAIMode(supabaseClient, botConfig, messageHistory, message, contact_name);
+          botResponse = await processAIMode(supabaseClient, botConfig, messageHistory, message, contact_name, conversation_id);
           processingMode = 'ai';
           break;
           
@@ -99,7 +99,7 @@ serve(async (req) => {
           botResponse = await processKeywordMode(supabaseClient, botConfig, message);
           if (!botResponse) {
             // Try AI
-            botResponse = await processAIMode(supabaseClient, botConfig, messageHistory, message, contact_name);
+            botResponse = await processAIMode(supabaseClient, botConfig, messageHistory, message, contact_name, conversation_id);
           }
           processingMode = 'hybrid';
           break;
@@ -191,19 +191,110 @@ async function processKeywordMode(supabaseClient: any, botConfig: any, message: 
   return '';
 }
 
-// MODO 2: IA (Lovable AI)
+// MODO 2: IA (BYOK - Bring Your Own Key)
 async function processAIMode(
   supabaseClient: any,
   botConfig: any,
   messageHistory: any[],
   message: string,
-  contactName: string
+  contactName: string,
+  conversationId: string
 ): Promise<string> {
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.log('LOVABLE_API_KEY not set, skipping AI mode');
-      return '';
+    // Buscar empresa_id e agente_id da conversa
+    const { data: conversation } = await supabaseClient
+      .from('conversations')
+      .select('empresa_id, tokens_usados, agente_id')
+      .eq('id', conversationId)
+      .single();
+
+    let apiKey: string | null = null;
+    let apiKeyId: number | null = null;
+    let provider: string = 'openai'; // Default provider
+
+    // Tentar buscar chave da empresa (BYOK)
+    if (conversation?.empresa_id) {
+      try {
+        // Tentar buscar chave padrão da empresa (prioridade: openai, claude, anthropic, google)
+        const providers = ['openai', 'claude', 'anthropic', 'google'];
+        
+        for (const prov of providers) {
+          const { data: decryptedKey, error: keyError } = await supabaseClient.rpc(
+            'get_default_decrypted_api_key',
+            {
+              p_empresa_id: conversation.empresa_id,
+              p_provider: prov,
+            }
+          );
+
+          if (!keyError && decryptedKey) {
+            apiKey = decryptedKey;
+            provider = prov;
+            
+            // Buscar ID da chave usada
+            const { data: keyData } = await supabaseClient
+              .from('api_keys')
+              .select('id')
+              .eq('empresa_id', conversation.empresa_id)
+              .eq('provider', prov)
+              .eq('is_default', true)
+              .eq('is_active', true)
+              .single();
+            
+            if (keyData) {
+              apiKeyId = keyData.id;
+            }
+            
+            console.log(`Using BYOK key for provider: ${prov}`);
+            break;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching BYOK key:', error);
+      }
+    }
+
+    // Fallback: usar chave padrão da plataforma (se configurada)
+    if (!apiKey) {
+      const PLATFORM_API_KEY = Deno.env.get('LOVABLE_API_KEY') || Deno.env.get('OPENAI_API_KEY');
+      if (PLATFORM_API_KEY) {
+        apiKey = PLATFORM_API_KEY;
+        provider = 'openai'; // Assumir OpenAI para chave padrão
+        console.log('Using platform default API key (fallback)');
+      } else {
+        console.log('No API key available (neither BYOK nor platform default), skipping AI mode');
+        return '';
+      }
+    }
+
+    // Buscar agente de IA se especificado na conversa
+    let agenteInstrucoes = '';
+    let contextoEmpresa = '';
+    
+    if (conversation?.agente_id) {
+      const { data: agente } = await supabaseClient
+        .from('agentes_ia')
+        .select('instrucoes')
+        .eq('id', conversation.agente_id)
+        .eq('status', 'active')
+        .single();
+      
+      if (agente) {
+        agenteInstrucoes = agente.instrucoes;
+      }
+    }
+
+    // Buscar contexto da empresa se disponível
+    if (conversation?.empresa_id) {
+      const { data: empresa } = await supabaseClient
+        .from('empresas')
+        .select('contexto_ia')
+        .eq('id', conversation.empresa_id)
+        .single();
+      
+      if (empresa?.contexto_ia && typeof empresa.contexto_ia === 'object') {
+        contextoEmpresa = JSON.stringify(empresa.contexto_ia);
+      }
     }
 
     // Get knowledge base if enabled
@@ -213,7 +304,11 @@ async function processAIMode(
       knowledgeContext = 'Base de conhecimento disponível.';
     }
 
-    const systemPrompt = `${botConfig.ai_instructions}
+    // Usar instruções do agente se disponível, senão usar do bot_config
+    const instrucoesBase = agenteInstrucoes || botConfig.ai_instructions;
+    
+    const systemPrompt = `${instrucoesBase}
+${contextoEmpresa ? `\n\nContexto da Empresa:\n${contextoEmpresa}` : ''}
 
 Personalidade: ${botConfig.ai_personality}
 
@@ -235,20 +330,63 @@ IMPORTANTE:
       }))
     ];
 
-    console.log('Calling AI with messages:', messages.length);
+    console.log('Calling AI with messages:', messages.length, 'Provider:', provider);
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
+    // Determinar endpoint e headers baseado no provider
+    let apiUrl = '';
+    let headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+
+    switch (provider) {
+      case 'openai':
+        apiUrl = 'https://api.openai.com/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        break;
+      case 'claude':
+      case 'anthropic':
+        apiUrl = 'https://api.anthropic.com/v1/messages';
+        headers['x-api-key'] = apiKey;
+        headers['anthropic-version'] = '2023-06-01';
+        break;
+      case 'google':
+        // Google pode usar diferentes endpoints, assumindo Vertex AI ou similar
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions'; // Fallback para gateway
+        headers['Authorization'] = `Bearer ${apiKey}`;
+        break;
+      default:
+        // Fallback para gateway Lovable
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
+        headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    // Preparar body baseado no provider
+    let requestBody: any;
+    if (provider === 'claude' || provider === 'anthropic') {
+      // Anthropic usa formato diferente
+      requestBody = {
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 200,
+        messages: messages.filter(m => m.role !== 'system').map((m: any) => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content,
+        })),
+        system: messages.find((m: any) => m.role === 'system')?.content || '',
+      };
+    } else {
+      // OpenAI e outros usam formato padrão
+      requestBody = {
+        model: provider === 'openai' ? 'gpt-3.5-turbo' : 'google/gemini-2.5-flash',
         messages,
         temperature: 0.7,
-        max_tokens: 200
-      })
+        max_tokens: 200,
+      };
+    }
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -258,8 +396,36 @@ IMPORTANTE:
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0]?.message?.content || '';
-    console.log('AI response:', aiResponse);
+    
+    // Extrair resposta baseado no provider
+    let aiResponse = '';
+    let tokensUsed = 0;
+
+    if (provider === 'claude' || provider === 'anthropic') {
+      aiResponse = data.content?.[0]?.text || '';
+      tokensUsed = (data.usage?.input_tokens || 0) + (data.usage?.output_tokens || 0);
+    } else {
+      aiResponse = data.choices?.[0]?.message?.content || '';
+      tokensUsed = data.usage?.total_tokens || 0;
+    }
+
+    console.log('AI response:', aiResponse, 'Tokens:', tokensUsed);
+
+    // Atualizar conversa com api_key_id e tokens_usados
+    if (conversation?.empresa_id) {
+      const updateData: any = {
+        tokens_usados: (conversation.tokens_usados || 0) + tokensUsed,
+      };
+
+      if (apiKeyId) {
+        updateData.api_key_id = apiKeyId;
+      }
+
+      await supabaseClient
+        .from('conversations')
+        .update(updateData)
+        .eq('id', conversationId);
+    }
     
     return aiResponse;
   } catch (error) {

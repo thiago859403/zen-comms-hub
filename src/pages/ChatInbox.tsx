@@ -8,6 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -24,8 +25,10 @@ import {
   MessageCircle,
   Filter,
   Tag as TagIcon,
-  AlertCircle
+  AlertCircle,
+  Bot
 } from "lucide-react";
+import { AgentSelector } from "@/components/chat/AgentSelector";
 
 interface Conversation {
   id: string;
@@ -310,32 +313,51 @@ const ChatInbox = () => {
           {selectedConversation ? (
             <>
               {/* Header do Chat */}
-              <div className="p-4 border-b flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarFallback>
-                      <User className="h-5 w-5" />
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <h3 className="font-semibold">{selectedConversation.contact_name}</h3>
-                    <p className="text-sm text-muted-foreground">{selectedConversation.contact_phone}</p>
+              <div className="p-4 border-b space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarFallback>
+                        <User className="h-5 w-5" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-semibold">{selectedConversation.contact_name}</h3>
+                      <p className="text-sm text-muted-foreground">{selectedConversation.contact_phone}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button size="icon" variant="ghost">
+                      <Phone className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost">
+                      <Video className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost">
+                      <TagIcon className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Button size="icon" variant="ghost">
-                    <Phone className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost">
-                    <Video className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost">
-                    <TagIcon className="h-4 w-4" />
-                  </Button>
-                  <Button size="icon" variant="ghost">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
+                
+                {/* Seletor de Agente de IA */}
+                <div className="flex items-center gap-2 border-t pt-3">
+                  <Bot className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex-1">
+                    <Label className="text-xs text-muted-foreground mb-1 block">
+                      Agente de IA
+                    </Label>
+                    <AgentSelector
+                      conversationId={selectedConversation.id}
+                      value={null}
+                      onChange={(agenteId) => {
+                        console.log('Agente selecionado:', agenteId);
+                      }}
+                    />
+                  </div>
                 </div>
               </div>
 

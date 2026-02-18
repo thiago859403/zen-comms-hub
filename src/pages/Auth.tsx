@@ -87,26 +87,57 @@ export default function Auth() {
     try {
       signupSchema.parse(signupData);
 
+      // Verificar se o cliente Supabase está configurado corretamente
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+      
+      if (!supabaseUrl || !supabaseKey) {
+        throw new Error(
+          'Configuração do Supabase não encontrada. Verifique as variáveis de ambiente VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no arquivo .env.local'
+        );
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email: signupData.email,
         password: signupData.password,
         options: {
           data: {
             full_name: signupData.full_name,
-            company: signupData.company,
+            company: signupData.company || '',
           },
-          emailRedirectTo: `${window.location.origin}/dashboard`,
         },
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes('Invalid API key') || error.message.includes('JWT')) {
+          throw new Error(
+            'Chave de API inválida. Por favor, reinicie o servidor de desenvolvimento (pnpm dev) para carregar as variáveis de ambiente atualizadas.'
+          );
+        }
+        throw error;
+      }
 
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Você já pode acessar sua conta",
-      });
 
-      navigate("/dashboard");
+      // Aguardar a sessão ser confirmada antes de navegar
+      if (data.session) {
+        // Sessão criada imediatamente (email confirmation disabled)
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Você já pode acessar sua conta",
+        });
+        
+        // Pequeno delay para garantir que o onAuthStateChange foi disparado
+        // e que o AuthProvider já processou a nova sessão
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        navigate("/dashboard", { replace: true });
+      } else if (data.user) {
+        // Usuário criado mas sem sessão (aguardando confirmação de email)
+        toast({
+          title: "Conta criada!",
+          description: "Verifique seu email para confirmar o cadastro",
+        });
+      }
     } catch (error: any) {
       if (error instanceof z.ZodError) {
         toast({
@@ -115,6 +146,7 @@ export default function Auth() {
           variant: "destructive",
         });
       } else {
+        console.error('Erro no signup:', error);
         toast({
           title: "Erro ao criar conta",
           description: error.message || "Tente novamente mais tarde",

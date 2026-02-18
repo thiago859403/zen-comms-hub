@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -19,10 +20,119 @@ import {
 import { useNavigate } from "react-router-dom";
 import DashboardLayout from "@/components/DashboardLayout";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+interface RecentConversation {
+  id: string;
+  contact_name: string;
+  contact_phone: string;
+  status: string;
+  last_message_at: string;
+}
+
+const RecentConversations = ({ userId }: { userId?: string }) => {
+  const { empresaId } = useAuth();
+  const [conversations, setConversations] = useState<RecentConversation[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (userId && empresaId) {
+      loadConversations();
+    }
+  }, [userId, empresaId]);
+
+  const loadConversations = async () => {
+    if (!userId || !empresaId) return;
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('conversations')
+        .select('id, contact_name, contact_phone, status, last_message_at')
+        .eq('empresa_id', empresaId)
+        .eq('assigned_agent_id', userId)
+        .order('last_message_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+
+      setConversations((data as RecentConversation[]) || []);
+    } catch (error) {
+      console.error('Erro ao carregar conversas:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Card>
+        <Card className="p-6">
+          <Skeleton className="h-20 w-full" />
+        </Card>
+      </Card>
+    );
+  }
+
+  if (conversations.length === 0) {
+    return (
+      <Card className="p-6">
+        <p className="text-sm text-muted-foreground text-center">
+          Nenhuma conversa recente
+        </p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Contato</TableHead>
+            <TableHead>Telefone</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>Última Mensagem</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {conversations.map((conv) => (
+            <TableRow key={conv.id}>
+              <TableCell className="font-medium">{conv.contact_name}</TableCell>
+              <TableCell>{conv.contact_phone}</TableCell>
+              <TableCell>
+                <Badge variant={conv.status === 'closed' ? 'outline' : 'default'}>
+                  {conv.status}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                {format(new Date(conv.last_message_at), "dd/MM/yyyy HH:mm", {
+                  locale: ptBR,
+                })}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </Card>
+  );
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { stats, planInfo, profile } = useDashboardData();
 
   const formatDate = (dateStr: string) => {
