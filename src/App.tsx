@@ -410,7 +410,7 @@ const App = () => {
             }
           />
 
-          {/* Debug/Teste — acesso restrito por ?key=NUVIA_TEST */}
+          {/* Debug/Teste — acesso restrito por ?key=VITE_SENTRY_DEBUG_KEY */}
           <Route
             path="/debug/sentry"
             element={

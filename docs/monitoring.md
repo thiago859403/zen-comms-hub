@@ -18,6 +18,7 @@ A integração é implementada em `src/lib/monitoring.ts` e opera em dois modos:
 | Variável | Obrigatória | Descrição |
 |----------|-------------|-----------|
 | `VITE_SENTRY_DSN` | Sim (para ativar) | DSN do projeto Sentry |
+| `VITE_SENTRY_DEBUG_KEY` | Sim (para acessar debug) | Chave de acesso à página `/debug/sentry` |
 | `VITE_APP_ENV` | Não | Environment (`development`, `staging`, `production`) |
 | `VITE_APP_VERSION` | Não | Versão/release da aplicação |
 
@@ -73,30 +74,35 @@ Re-exporta o `ErrorBoundary` do Sentry para uso como componente React.
 
 Uma página de teste interna está disponível para validar que o Sentry está recebendo eventos corretamente.
 
-**URL:** `/debug/sentry?key=NUVIA_TEST`
+**URL:** `/debug/sentry?key=<VITE_SENTRY_DEBUG_KEY>`
 
-> ⚠️ **Segurança:** A página só é acessível com a query string `?key=NUVIA_TEST`. Sem a key correta, o usuário é redirecionado para `/`. **Altere ou remova a key antes de liberar para clientes em produção.**
+> ⚠️ **Segurança:** A página só é acessível quando o valor de `?key=` na URL corresponde exatamente ao valor da variável de ambiente `VITE_SENTRY_DEBUG_KEY`. Sem a key correta, uma tela de diagnóstico é exibida (sem redirect). **Nunca commite a key no repositório — use apenas `.env` local ou secrets do CI.**
 
 ### Passo a Passo
 
-1. **Acesse a URL de debug:**
+1. **Configure a variável de ambiente** no `.env`:
    ```
-   http://localhost:3000/debug/sentry?key=NUVIA_TEST
+   VITE_SENTRY_DEBUG_KEY=NUVIA_SENTRY_DEBUG_2026_X9_rF4KpL7zQ2wT8eAM6uV1sYdB5nC0HjP3
    ```
 
-2. **Verifique o status exibido na página:**
+2. **Acesse a URL de debug:**
+   ```
+   http://localhost:3000/debug/sentry?key=NUVIA_SENTRY_DEBUG_2026_X9_rF4KpL7zQ2wT8eAM6uV1sYdB5nC0HjP3
+   ```
+
+3. **Verifique o status exibido na página:**
    - **Sentry Ativo (verde)** → DSN configurado, eventos serão enviados.
    - **No-op (cinza)** → DSN ausente, eventos não serão enviados ao Sentry (apenas logs no console).
 
-3. **Clique em "Enviar ERRO de teste"**
+4. **Clique em "Enviar ERRO de teste"**
    - Dispara `captureException(new Error("Teste Sentry Nuvia (manual)"))`.
    - Um toast de confirmação será exibido.
 
-4. **Clique em "Enviar MENSAGEM de teste"**
+5. **Clique em "Enviar MENSAGEM de teste"**
    - Dispara `captureMessage("Teste Sentry Nuvia (message)", "info")`.
    - Um toast de confirmação será exibido.
 
-5. **Verifique no Sentry:**
+6. **Verifique no Sentry:**
    - Acesse [sentry.io](https://sentry.io) → seu projeto → **Issues**.
    - Procure por:
      - `Error: Teste Sentry Nuvia (manual)` (exceção)
@@ -107,4 +113,5 @@ Uma página de teste interna está disponível para validar que o Sentry está r
 
 - Se o Sentry estiver em modo **no-op**, os botões funcionam, mas os eventos **não** são enviados ao Sentry (apenas registrados no console).
 - Em ambiente de CI, o DSN normalmente não está configurado — isso é esperado e não impacta os testes.
-- **Antes de liberar para produção**: altere ou remova a key `NUVIA_TEST` para evitar acesso não autorizado.
+- **Nenhuma key está hardcoded no código.** A página depende exclusivamente da variável `VITE_SENTRY_DEBUG_KEY`.
+- Se a key da URL não corresponder à env var, uma tela de diagnóstico é exibida mostrando `urlKey`, `envKey`, seus tamanhos e o motivo do bloqueio.
