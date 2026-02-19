@@ -5,6 +5,10 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { initMonitoring } from "@/lib/monitoring";
+
+// Inicializar monitoramento o mais cedo possível (antes do render)
+initMonitoring();
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";

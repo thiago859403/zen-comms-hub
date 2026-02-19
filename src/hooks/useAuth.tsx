@@ -1,6 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { setUser as setMonitoringUser } from '@/lib/monitoring';
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface Empresa {
@@ -201,6 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // SIGNED_OUT: limpar estado imediatamente
     if (event === 'SIGNED_OUT' || !session?.user) {
+      setMonitoringUser(null);
       setAuthState({
         user: null,
         isLoading: false,
@@ -239,6 +241,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         empresaId,
         empresa,
         profile,
+      });
+
+      // Identificar usuário no Sentry
+      setMonitoringUser({
+        id: session.user.id,
+        email: session.user.email,
+        empresa_id: empresaId,
       });
       
       isInitialized.current = true;
@@ -326,6 +335,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [authState.isLoading]);
 
   const signOut = useCallback(async () => {
+    setMonitoringUser(null); // Limpar usuário no Sentry
     await supabase.auth.signOut();
     navigate('/auth');
   }, [navigate]);
