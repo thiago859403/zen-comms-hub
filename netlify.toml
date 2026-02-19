@@ -1,0 +1,66 @@
+# =============================================================================
+# Netlify Configuration — Nuvia Customer Cloud (zen-comms-hub)
+# =============================================================================
+# Vite SPA: build gera arquivos estáticos em "dist/".
+# Todas as rotas são tratadas pelo React Router (SPA fallback).
+# =============================================================================
+
+[build]
+  command = "pnpm install --frozen-lockfile && pnpm build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  # Netlify detecta pnpm-lock.yaml e instala pnpm automaticamente.
+  # Se necessário forçar versão:
+  # PNPM_VERSION = "9"
+
+# -----------------------------------------------------------------------------
+# SPA Fallback — redireciona todas as rotas para /index.html (React Router)
+# DEVE ser a última regra de redirect.
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# -----------------------------------------------------------------------------
+# Contexto: Production (branch main)
+# Deploy automático a cada push em main.
+# Env vars configuradas no Netlify UI (Site settings → Environment variables).
+# -----------------------------------------------------------------------------
+[context.production]
+  command = "pnpm install --frozen-lockfile && pnpm build"
+  [context.production.environment]
+    VITE_APP_ENV = "production"
+
+# -----------------------------------------------------------------------------
+# Contexto: Deploy Preview (Pull Requests)
+# Gera URL temporária para cada PR (staging automático).
+# Usa as mesmas env vars de production (configurar no Netlify UI).
+# Para usar um Supabase de staging separado, sobrescreva VITE_SUPABASE_URL
+# e VITE_SUPABASE_ANON_KEY neste contexto via Netlify UI.
+# -----------------------------------------------------------------------------
+[context.deploy-preview]
+  command = "pnpm install --frozen-lockfile && pnpm build"
+  [context.deploy-preview.environment]
+    VITE_APP_ENV = "preview"
+
+# -----------------------------------------------------------------------------
+# Contexto: Branch Deploy (branch dev)
+# Deploy automático para a branch dev (ambiente de desenvolvimento).
+# -----------------------------------------------------------------------------
+[context.branch-deploy]
+  command = "pnpm install --frozen-lockfile && pnpm build"
+  [context.branch-deploy.environment]
+    VITE_APP_ENV = "development"
+
+# -----------------------------------------------------------------------------
+# Headers de segurança
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
