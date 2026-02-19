@@ -3,11 +3,14 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { initMonitoring } from "@/lib/monitoring";
 import { Loader2 } from "lucide-react";
+
+// Inicializar monitoramento o mais cedo possível (antes do render)
+initMonitoring();
 
 // Páginas públicas (carregamento imediato)
 import Landing from "./pages/Landing";
@@ -82,14 +85,6 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
-  // Inicializar monitoramento no boot (EPIC 6.3.3)
-  useEffect(() => {
-    initMonitoring({
-      environment: import.meta.env.VITE_APP_ENV || 'development',
-      release: import.meta.env.VITE_APP_VERSION || 'unknown',
-    });
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
@@ -102,17 +97,6 @@ const App = () => {
           <Route path="/auth" element={<Auth />} />
           <Route path="/admin/login" element={<AdminLogin />} />
 
-          {/* Protected Dashboard Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <Dashboard />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
           {/* Protected Dashboard Routes */}
           <Route
             path="/dashboard"
@@ -255,7 +239,7 @@ const App = () => {
             }
           />
 
-          {/* ✅ Página Beta/Marketing */}
+          {/* Página Beta/Marketing */}
           <Route
             path="/dashboard/specialist-agents"
             element={
@@ -358,7 +342,7 @@ const App = () => {
             }
           />
 
-          {/* ✅ Página Oficial (usada nos testes) */}
+          {/* Página Oficial (usada nos testes) */}
           <Route
             path="/dashboard/ai-agents"
             element={

@@ -1,186 +1,216 @@
 // =====================================================
-// EPIC 6.3.3 - Monitoramento e Error Tracking
+// Monitoramento — Sentry Integration
 // =====================================================
-// 
-// Integração com Sentry para captura de erros e monitoramento.
-// Não quebra o app se variáveis de ambiente estiverem ausentes.
-// Nunca loga tokens ou secrets.
+//
+// Fornece funções para inicializar o Sentry, capturar erros,
+// mensagens e identificar usuários. Opera em "no-op mode"
+// quando VITE_SENTRY_DSN não está configurado.
 // =====================================================
 
-interface MonitoringConfig {
-  dsn?: string;
-  environment?: string;
-  release?: string;
-  enabled: boolean;
-}
+import * as Sentry from '@sentry/react';
 
-let monitoringInitialized = false;
-let config: MonitoringConfig = {
-  enabled: false,
-};
+// Flag que indica se o Sentry foi inicializado com sucesso
+let isInitialized = false;
+
+// Padrões de dados sensíveis que devem ser sanitizados
+const SENSITIVE_PATTERNS = [
+  /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi,
+  /eyJ[A-Za-z0-9\-_]+\.eyJ[A-Za-z0-9\-_]+\.[A-Za-z0-9\-_.+/=]*/g, // JWT
+  /sb_[a-zA-Z0-9_-]+/g, // Supabase keys
+  /sk_[a-zA-Z0-9_-]+/g, // Stripe secret keys
+  /pk_[a-zA-Z0-9_-]+/g, // Stripe publishable keys
+  /supabase_service_role_key[^&\s]*/gi,
+  /password["\s:=]+["']?[^"'\s&]+/gi,
+  /secret["\s:=]+["']?[^"'\s&]+/gi,
+];
 
 /**
- * Inicializa o monitoramento (Sentry).
- * Não quebra o app se config estiver ausente.
+ * Sanitiza um valor removendo tokens, secrets e dados sensíveis.
  */
-export function initMonitoring(options?: {
-  dsn?: string;
-  environment?: string;
-  release?: string;
-}) {
-  if (monitoringInitialized) {
-    console.warn('[Monitoring] Já inicializado, ignorando nova inicialização');
-    return;
+function sanitizeValue(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  let sanitized = value;
+  for (const pattern of SENSITIVE_PATTERNS) {
+    sanitized = sanitized.replace(pattern, '[REDACTED]');
   }
+  return sanitized;
+}
 
-  // Verificar se DSN está disponível
-  const dsn = options?.dsn || import.meta.env.VITE_SENTRY_DSN;
-  
-  if (!dsn) {
-    console.info('[Monitoring] Sentry DSN não configurado, monitoramento desabilitado');
-    config.enabled = false;
-    monitoringInitialized = true;
-    return;
-  }
-
-  try {
-    // Importar Sentry dinamicamente (não quebra se não instalado)
-    // Em produção, instalar: pnpm add @sentry/react
-    // Por enquanto, apenas simular a estrutura
-    
-    config = {
-      dsn,
-      environment: options?.environment || import.meta.env.VITE_APP_ENV || 'development',
-      release: options?.release || import.meta.env.VITE_APP_VERSION || 'unknown',
-      enabled: true,
-    };
-
-    // TODO: Quando @sentry/react estiver instalado:
-    // 1. Instalar: pnpm add @sentry/react
-    // 2. Importar: import * as Sentry from '@sentry/react';
-    // 3. Inicializar Sentry.init() com as configurações abaixo:
-    //    - dsn: config.dsn
-    //    - environment: config.environment
-    //    - release: config.release
-    //    - beforeSend: filtrar tokens/secrets de headers, URLs e breadcrumbs
-
-    console.info('[Monitoring] Sentry inicializado', {
-      environment: config.environment,
-      release: config.release,
+/**
+ * beforeSend hook para filtrar/sanitizar eventos antes de enviar ao Sentry.
+ */
+function beforeSend(event: Sentry.ErrorEvent): Sentry.ErrorEvent | null {
+  // Sanitizar breadcrumbs
+  if (event.breadcrumbs) {
+    event.breadcrumbs = event.breadcrumbs.map((breadcrumb) => {
+      if (breadcrumb.data) {
+        const sanitizedData: Record<string, unknown> = {};
+        for (const [key, val] of Object.entries(breadcrumb.data)) {
+          sanitizedData[key] = sanitizeValue(val);
+        }
+        breadcrumb.data = sanitizedData;
+      }
+      if (breadcrumb.message) {
+        breadcrumb.message = sanitizeValue(breadcrumb.message) as string;
+      }
+      return breadcrumb;
     });
-
-    monitoringInitialized = true;
-  } catch (error) {
-    console.error('[Monitoring] Erro ao inicializar Sentry:', error);
-    config.enabled = false;
-    monitoringInitialized = true;
   }
+
+  // Sanitizar headers de request se presentes
+  if (event.request?.headers) {
+    const sanitizedHeaders: Record<string, string> = {};
+    for (const [key, val] of Object.entries(event.request.headers)) {
+      if (['authorization', 'cookie', 'x-api-key', 'apikey'].includes(key.toLowerCase())) {
+        sanitizedHeaders[key] = '[REDACTED]';
+      } else {
+        sanitizedHeaders[key] = sanitizeValue(val) as string;
+      }
+    }
+    event.request.headers = sanitizedHeaders;
+  }
+
+  return event;
+}
+
+interface InitMonitoringOptions {
+  dsn?: string;
+  environment?: string;
+  release?: string;
+  tracesSampleRate?: number;
 }
 
 /**
- * Captura uma exceção e envia para Sentry.
+ * Inicializa o Sentry. Seguro para chamar sem DSN (opera em no-op mode).
+ *
+ * Deve ser chamado o mais cedo possível no boot da aplicação (App.tsx ou main.tsx).
  */
-export function captureException(error: Error, context?: Record<string, any>) {
-  if (!config.enabled) {
-    console.error('[Monitoring] Exception (não enviado):', error, context);
+export function initMonitoring(options: InitMonitoringOptions = {}): void {
+  // Evitar re-inicialização
+  if (isInitialized) {
+    console.debug('[Monitoring] Já inicializado, ignorando nova chamada');
+    return;
+  }
+
+  const dsn = options.dsn || import.meta.env.VITE_SENTRY_DSN;
+
+  if (!dsn) {
+    console.debug('[Monitoring] VITE_SENTRY_DSN not set — running in no-op mode');
     return;
   }
 
   try {
-    // TODO: Quando @sentry/react estiver instalado:
-    // import * as Sentry from '@sentry/react';
-    // Sentry.captureException(error, { extra: context });
-    console.error('[Monitoring] Exception capturada:', error, context);
-  } catch (err) {
-    console.error('[Monitoring] Erro ao capturar exception:', err);
+    Sentry.init({
+      dsn,
+      environment: options.environment || import.meta.env.VITE_APP_ENV || 'development',
+      release: options.release || import.meta.env.VITE_APP_VERSION || undefined,
+      integrations: [
+        Sentry.browserTracingIntegration(),
+        Sentry.replayIntegration({
+          maskAllText: true,
+          blockAllMedia: true,
+        }),
+      ],
+      tracesSampleRate: options.tracesSampleRate ?? 0.2,
+      replaysSessionSampleRate: 0.1,
+      replaysOnErrorSampleRate: 1.0,
+      beforeSend,
+      // Ignorar erros comuns de rede / browser que não são acionáveis
+      ignoreErrors: [
+        'ResizeObserver loop limit exceeded',
+        'ResizeObserver loop completed with undelivered notifications',
+        'Network request failed',
+        'Failed to fetch',
+        'Load failed',
+        'AbortError',
+      ],
+    });
+    isInitialized = true;
+    console.debug('[Monitoring] Sentry initialized successfully');
+  } catch (error) {
+    console.warn('[Monitoring] Failed to initialize Sentry:', error);
   }
 }
 
 /**
- * Captura uma mensagem e envia para Sentry.
+ * Captura uma exceção no Sentry. No-op se Sentry não estiver inicializado.
+ */
+export function captureException(
+  error: unknown,
+  context?: Record<string, unknown>
+): void {
+  if (!isInitialized) return;
+  Sentry.captureException(error, context ? { extra: context } : undefined);
+}
+
+/**
+ * Captura uma mensagem no Sentry. No-op se Sentry não estiver inicializado.
  */
 export function captureMessage(
   message: string,
-  level: 'info' | 'warning' | 'error' = 'info',
-  context?: Record<string, any>
-) {
-  if (!config.enabled) {
-    console.log(`[Monitoring] ${level.toUpperCase()}:`, message, context);
-    return;
-  }
+  level: Sentry.SeverityLevel = 'info'
+): void {
+  if (!isInitialized) return;
+  Sentry.captureMessage(message, level);
+}
 
-  try {
-    // TODO: Quando @sentry/react estiver instalado:
-    // import * as Sentry from '@sentry/react';
-    // Sentry.captureMessage(message, { level, extra: context });
-    console.log(`[Monitoring] ${level.toUpperCase()}:`, message, context);
-  } catch (err) {
-    console.error('[Monitoring] Erro ao capturar mensagem:', err);
+/**
+ * Identifica o usuário autenticado no Sentry.
+ * Deve ser chamado após login/signup e limpo no logout.
+ *
+ * @param user - Dados do usuário (id, email, empresa_id). Passar `null` para limpar.
+ */
+export function setUser(
+  user: { id: string; email?: string; empresa_id?: number | null } | null
+): void {
+  if (!isInitialized) return;
+
+  if (user) {
+    Sentry.setUser({
+      id: user.id,
+      email: user.email,
+      // empresa_id como tag customizada para filtrar por tenant no Sentry
+      ...(user.empresa_id ? { empresa_id: String(user.empresa_id) } : {}),
+    } as Sentry.User);
+  } else {
+    Sentry.setUser(null);
   }
 }
 
 /**
- * Define o usuário atual no contexto do Sentry.
+ * Adiciona um breadcrumb para contexto de debugging.
  */
-export function setUser(user: {
-  id: string;
-  email?: string;
-  username?: string;
-  empresa_id?: string | number;
-}) {
-  if (!config.enabled) {
-    return;
-  }
-
-  try {
-    // TODO: Quando @sentry/react estiver instalado:
-    // import * as Sentry from '@sentry/react';
-    // Sentry.setUser({ id: user.id, email: user.email, username: user.username, empresa_id: user.empresa_id?.toString() });
-    console.debug('[Monitoring] User set:', { id: user.id, email: user.email });
-  } catch (err) {
-    console.error('[Monitoring] Erro ao definir usuário:', err);
-  }
-}
-
-/**
- * Limpa o contexto do usuário (logout).
- */
-export function clearUser() {
-  if (!config.enabled) {
-    return;
-  }
-
-  try {
-    // TODO: Quando @sentry/react estiver instalado:
-    // import * as Sentry from '@sentry/react';
-    // Sentry.setUser(null);
-    console.debug('[Monitoring] User cleared');
-  } catch (err) {
-    console.error('[Monitoring] Erro ao limpar usuário:', err);
-  }
+export function addBreadcrumb(
+  message: string,
+  category?: string,
+  data?: Record<string, unknown>
+): void {
+  if (!isInitialized) return;
+  Sentry.addBreadcrumb({
+    message,
+    category: category || 'app',
+    data,
+    level: 'info',
+  });
 }
 
 /**
  * Adiciona contexto adicional ao próximo evento.
  */
-export function setContext(key: string, context: Record<string, any>) {
-  if (!config.enabled) {
-    return;
-  }
-
-  try {
-    // TODO: Quando @sentry/react estiver instalado:
-    // import * as Sentry from '@sentry/react';
-    // Sentry.setContext(key, context);
-    console.debug(`[Monitoring] Context set: ${key}`, context);
-  } catch (err) {
-    console.error('[Monitoring] Erro ao definir contexto:', err);
-  }
+export function setContext(key: string, context: Record<string, unknown>): void {
+  if (!isInitialized) return;
+  Sentry.setContext(key, context);
 }
 
 /**
  * Verifica se o monitoramento está habilitado.
  */
 export function isMonitoringEnabled(): boolean {
-  return config.enabled;
+  return isInitialized;
 }
+
+/**
+ * Re-exporta o ErrorBoundary do Sentry para uso no App.
+ * Em no-op mode, retorna um fragment wrapper que apenas renderiza children.
+ */
+export const SentryErrorBoundary = Sentry.ErrorBoundary;
