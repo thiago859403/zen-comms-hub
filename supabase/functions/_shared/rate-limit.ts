@@ -3,14 +3,14 @@
 // =====================================================
 // 
 // Helper para implementar rate limiting em Edge Functions.
-// Usa Supabase para armazenar contadores por IP/empresa_id.
+// Usa Supabase para armazenar contadores por IP/user_id/empresa_id.
 // =====================================================
 
 interface RateLimitOptions {
-  key: string; // Identificador único (ex: "login", "api-call")
+  key: string; // Identificador único (ex: "stripe-checkout", "api-keys")
   limit: number; // Número máximo de requisições
   windowSeconds: number; // Janela de tempo em segundos
-  identifier?: string; // IP ou empresa_id (opcional, usa IP se não fornecido)
+  identifier?: string; // IP, user_id ou empresa_id (opcional, usa IP se não fornecido)
 }
 
 interface RateLimitResult {
@@ -41,14 +41,7 @@ export async function checkRateLimit(
   const windowStart = now - windowSeconds;
   
   try {
-    // Buscar contador atual (usar uma tabela temporária ou KV store)
-    // Por simplicidade, vamos usar uma tabela rate_limits
-    // Se não existir, criar dinamicamente ou usar cache em memória
-    
-    // Por enquanto, implementação simples usando Supabase Storage ou uma tabela
-    // Em produção, considere usar Redis ou Supabase Realtime para melhor performance
-    
-    // Verificar se existe registro
+    // Buscar contador atual
     const { data: existing, error: selectError } = await supabase
       .from('rate_limits')
       .select('count, reset_at')
@@ -125,6 +118,24 @@ export async function checkRateLimit(
       resetAt: now + windowSeconds,
     };
   }
+}
+
+/**
+ * Extrai IP do request.
+ */
+export function getClientIP(req: Request): string {
+  // Tentar obter IP de headers comuns
+  const forwarded = req.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  
+  const realIP = req.headers.get('x-real-ip');
+  if (realIP) {
+    return realIP;
+  }
+  
+  return 'unknown';
 }
 
 /**
