@@ -18,6 +18,9 @@ import Auth from "./pages/Auth";
 import AdminLogin from "./pages/AdminLogin";
 import NotFound from "./pages/NotFound";
 
+// Página de debug (lazy loading, acesso restrito por query param)
+const DebugSentry = lazy(() => import("./pages/DebugSentry"));
+
 // Páginas protegidas (lazy loading)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const Campaigns = lazy(() => import("./pages/Campaigns"));
@@ -404,6 +407,16 @@ const App = () => {
                   <OrganizationSettings />
                 </Suspense>
               </ProtectedRoute>
+            }
+          />
+
+          {/* Debug/Teste — acesso restrito por ?key=NUVIA_TEST */}
+          <Route
+            path="/debug/sentry"
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <DebugSentry />
+              </Suspense>
             }
           />
 

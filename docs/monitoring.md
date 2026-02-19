@@ -1,135 +1,110 @@
-# Monitoramento — Sentry
+# Monitoramento — Sentry Integration
 
 ## Visão Geral
 
-O projeto usa [Sentry](https://sentry.io) para captura automática de erros, performance tracing e session replay. A integração é feita via `@sentry/react` e centralizada em `src/lib/monitoring.ts`.
+O projeto utiliza o [Sentry](https://sentry.io) para captura de erros, monitoramento de performance e session replay em produção.
 
-Quando `VITE_SENTRY_DSN` **não está definido**, o sistema opera em **no-op mode** — nenhum dado é enviado e nenhum erro ocorre.
+A integração é implementada em `src/lib/monitoring.ts` e opera em dois modos:
 
----
+| Modo | Condição | Comportamento |
+|------|----------|---------------|
+| **Ativo** | `VITE_SENTRY_DSN` configurado | Erros, mensagens e breadcrumbs são enviados ao Sentry |
+| **No-op** | `VITE_SENTRY_DSN` ausente | Todas as chamadas são silenciosas (não quebram a app) |
 
 ## Configuração
 
-### 1. Obter o DSN
-
-1. Acesse [sentry.io](https://sentry.io) → seu projeto → **Settings → Client Keys (DSN)**.
-2. Copie o valor do **DSN** (formato: `https://xxxxx@o0.ingest.sentry.io/0`).
-
-### 2. Variáveis de Ambiente
+### Variáveis de Ambiente
 
 | Variável | Obrigatória | Descrição |
-|---|---|---|
-| `VITE_SENTRY_DSN` | Não* | DSN público do Sentry. Sem ele, monitoring roda em no-op mode. |
-| `VITE_APP_ENV` | Não | Ambiente (`development`, `staging`, `production`). Default: `development`. |
-| `VITE_APP_VERSION` | Não | Versão da release para rastreamento no Sentry. |
-
-\* Obrigatória apenas se quiser ativar monitoramento real.
-
-### 3. Configurar no Netlify
-
-1. Vá em **Site Settings → Environment Variables**.
-2. Adicione:
-   - `VITE_SENTRY_DSN` = `<seu DSN>`
-   - `VITE_APP_ENV` = `production`
-   - `VITE_APP_VERSION` = `1.0.0` (ou use a variável `COMMIT_REF` do Netlify)
-3. Faça redeploy.
-
-### 4. Configurar no GitHub Actions (opcional)
-
-Se quiser monitorar builds de CI:
-
-```yaml
-env:
-  VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
-  VITE_APP_ENV: ci
-```
-
-Adicione o secret `VITE_SENTRY_DSN` em **Settings → Secrets and variables → Actions**.
-
----
-
-## Como Funciona
+|----------|-------------|-----------|
+| `VITE_SENTRY_DSN` | Sim (para ativar) | DSN do projeto Sentry |
+| `VITE_APP_ENV` | Não | Environment (`development`, `staging`, `production`) |
+| `VITE_APP_VERSION` | Não | Versão/release da aplicação |
 
 ### Inicialização
 
-`initMonitoring()` é chamado no nível de módulo em `src/App.tsx` (antes de qualquer render):
+O monitoramento é inicializado **no nível do módulo** em `src/App.tsx`, antes de qualquer render:
 
 ```typescript
 import { initMonitoring } from "@/lib/monitoring";
+
+// Executa antes do React render
 initMonitoring();
 ```
 
-### Identificação de Usuário
+Isso garante que erros que ocorram durante o bootstrap da aplicação também sejam capturados.
 
-Quando o usuário autentica, `setUser()` é chamado automaticamente pelo `AuthProvider`:
+## API Disponível
 
-```typescript
-setUser({ id: user.id, email: user.email, empresa_id: empresaId });
-```
+### `initMonitoring(options?)`
+Inicializa o Sentry. Seguro para chamar sem DSN. Possui guarda contra re-inicialização.
 
-No logout, `setUser(null)` limpa a identificação.
+### `captureException(error, context?)`
+Captura uma exceção. No-op se Sentry não estiver inicializado.
 
-### Captura Manual de Erros
+### `captureMessage(message, level?)`
+Captura uma mensagem. Níveis: `'info'`, `'warning'`, `'error'`, `'fatal'`.
 
-```typescript
-import { captureException, captureMessage, addBreadcrumb } from '@/lib/monitoring';
+### `setUser(user | null)`
+Identifica o usuário autenticado. Passar `null` para limpar (logout).
 
-// Capturar exceção com contexto extra
-try {
-  await riskyOperation();
-} catch (error) {
-  captureException(error, { operation: 'riskyOperation', userId: '...' });
-}
+### `addBreadcrumb(message, category?, data?)`
+Adiciona contexto de debugging ao próximo evento.
 
-// Capturar mensagem informativa
-captureMessage('Usuário fez upgrade de plano', 'info');
+### `setContext(key, context)`
+Adiciona contexto adicional ao próximo evento.
 
-// Adicionar breadcrumb para contexto
-addBreadcrumb('Clicou em "Enviar mensagem"', 'user-action', { to: '+55...' });
-```
+### `isMonitoringEnabled()`
+Retorna `true` se o Sentry está ativo.
 
----
+### `SentryErrorBoundary`
+Re-exporta o `ErrorBoundary` do Sentry para uso como componente React.
 
 ## Segurança
 
-- **Tokens/JWTs** são automaticamente redatados via `beforeSend`.
-- **Headers sensíveis** (`Authorization`, `Cookie`, `apikey`) são substituídos por `[REDACTED]`.
-- **Session Replay** mascara todo texto e bloqueia mídia por padrão.
-- **Erros comuns de rede** (`Failed to fetch`, `AbortError`) são ignorados para reduzir ruído.
+- **Sanitização automática**: O hook `beforeSend` remove tokens JWT, chaves Supabase/Stripe, passwords e secrets de todos os eventos antes de enviá-los ao Sentry.
+- **Headers sensíveis**: `Authorization`, `Cookie`, `x-api-key` e `apikey` são substituídos por `[REDACTED]`.
+- **Erros ignorados**: Erros comuns de rede (`Failed to fetch`, `AbortError`, `ResizeObserver`) são filtrados.
+- **Session Replay**: Texto mascarado e mídia bloqueada por padrão.
 
----
+## Teste Manual do Sentry
 
-## Validação
+### Página de Debug
 
-### Em desenvolvimento (sem DSN)
+Uma página de teste interna está disponível para validar que o Sentry está recebendo eventos corretamente.
 
-```bash
-pnpm dev
-# Console deve exibir: [Monitoring] VITE_SENTRY_DSN not set — running in no-op mode
-# App funciona normalmente sem erros
-```
+**URL:** `/debug/sentry?key=NUVIA_TEST`
 
-### Em produção (com DSN)
+> ⚠️ **Segurança:** A página só é acessível com a query string `?key=NUVIA_TEST`. Sem a key correta, o usuário é redirecionado para `/`. **Altere ou remova a key antes de liberar para clientes em produção.**
 
-1. Configure `VITE_SENTRY_DSN` no `.env.production` ou Netlify.
-2. Faça build e acesse a aplicação.
-3. Provoque um erro (ex: acessar rota inexistente ou `throw new Error('test')` no console).
-4. Verifique no painel do Sentry se o erro apareceu.
+### Passo a Passo
 
----
+1. **Acesse a URL de debug:**
+   ```
+   http://localhost:3000/debug/sentry?key=NUVIA_TEST
+   ```
 
-## Arquitetura
+2. **Verifique o status exibido na página:**
+   - **Sentry Ativo (verde)** → DSN configurado, eventos serão enviados.
+   - **No-op (cinza)** → DSN ausente, eventos não serão enviados ao Sentry (apenas logs no console).
 
-```
-src/lib/monitoring.ts     ← Módulo central (init, capture, setUser)
-src/App.tsx               ← Chama initMonitoring() no boot
-src/hooks/useAuth.tsx     ← Chama setUser() no login/logout
-```
+3. **Clique em "Enviar ERRO de teste"**
+   - Dispara `captureException(new Error("Teste Sentry Nuvia (manual)"))`.
+   - Um toast de confirmação será exibido.
 
-## Sample Rates (produção)
+4. **Clique em "Enviar MENSAGEM de teste"**
+   - Dispara `captureMessage("Teste Sentry Nuvia (message)", "info")`.
+   - Um toast de confirmação será exibido.
 
-| Feature | Taxa | Descrição |
-|---|---|---|
-| Traces | 20% | Performance monitoring |
-| Session Replay | 10% | Replay de sessões normais |
-| Replay on Error | 100% | Replay quando há erro |
+5. **Verifique no Sentry:**
+   - Acesse [sentry.io](https://sentry.io) → seu projeto → **Issues**.
+   - Procure por:
+     - `Error: Teste Sentry Nuvia (manual)` (exceção)
+     - `Teste Sentry Nuvia (message)` (mensagem)
+   - Os eventos devem incluir breadcrumbs com `source: "debug-page"`.
+
+### Observações
+
+- Se o Sentry estiver em modo **no-op**, os botões funcionam, mas os eventos **não** são enviados ao Sentry (apenas registrados no console).
+- Em ambiente de CI, o DSN normalmente não está configurado — isso é esperado e não impacta os testes.
+- **Antes de liberar para produção**: altere ou remova a key `NUVIA_TEST` para evitar acesso não autorizado.
