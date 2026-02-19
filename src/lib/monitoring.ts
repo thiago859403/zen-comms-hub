@@ -86,6 +86,12 @@ interface InitMonitoringOptions {
  * Deve ser chamado o mais cedo possível no boot da aplicação (App.tsx ou main.tsx).
  */
 export function initMonitoring(options: InitMonitoringOptions = {}): void {
+  // Evitar re-inicialização
+  if (isInitialized) {
+    console.debug('[Monitoring] Já inicializado, ignorando nova chamada');
+    return;
+  }
+
   const dsn = options.dsn || import.meta.env.VITE_SENTRY_DSN;
 
   if (!dsn) {
@@ -186,6 +192,21 @@ export function addBreadcrumb(
     data,
     level: 'info',
   });
+}
+
+/**
+ * Adiciona contexto adicional ao próximo evento.
+ */
+export function setContext(key: string, context: Record<string, unknown>): void {
+  if (!isInitialized) return;
+  Sentry.setContext(key, context);
+}
+
+/**
+ * Verifica se o monitoramento está habilitado.
+ */
+export function isMonitoringEnabled(): boolean {
+  return isInitialized;
 }
 
 /**

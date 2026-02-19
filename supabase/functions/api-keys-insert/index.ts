@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -67,6 +68,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Apenas admins podem gerenciar chaves API' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Rate limiting: 5 requisições/minuto por empresa_id (chaves sensíveis)
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const rateLimitResult = await checkRateLimit(supabaseService, {
+      key: 'api-keys-insert',
+      limit: 5,
+      windowSeconds: 60,
+      identifier: `empresa-${profile.empresa_id}`,
+    });
+    
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
     }
 
     const { provider, key_name, key_value, is_default = false }: InsertApiKeyRequest = await req.json();

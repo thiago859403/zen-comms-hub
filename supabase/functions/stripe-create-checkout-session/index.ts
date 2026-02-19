@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -44,6 +45,23 @@ serve(async (req) => {
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Rate limiting: 10 requisições/minuto por user_id
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const rateLimitResult = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-checkout',
+      limit: 10,
+      windowSeconds: 60,
+      identifier: user.id,
+    });
+    
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
     }
 
     // Obter perfil e empresa do usuário

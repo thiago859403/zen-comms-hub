@@ -1,0 +1,78 @@
+name: Deploy Edge Functions
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/functions/**"
+      - "supabase/config.toml"
+  workflow_dispatch:
+    inputs:
+      function:
+        description: "Function slug to deploy (blank = all)"
+        required: false
+        type: string
+
+concurrency:
+  group: deploy-functions-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy Supabase Edge Functions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      SUPABASE_PROJECT_REF: zlqpgxvmiqadavimqtns
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify secrets
+        run: |
+          if [ -z "${{ secrets.SUPABASE_ACCESS_TOKEN }}" ]; then
+            echo "::error::SUPABASE_ACCESS_TOKEN is not set."
+            echo "Go to: https://github.com/${{ github.repository }}/settings/secrets/actions"
+            echo "Create a secret named SUPABASE_ACCESS_TOKEN with your Supabase personal access token."
+            echo "Generate one at: https://supabase.com/dashboard/account/tokens"
+            exit 1
+          fi
+          echo "SUPABASE_ACCESS_TOKEN is configured"
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Link project
+        run: supabase link --project-ref $SUPABASE_PROJECT_REF
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      - name: Deploy Edge Functions
+        run: |
+          FUNCTION="${{ github.event.inputs.function }}"
+
+          if [ -n "$FUNCTION" ]; then
+            echo "Deploying single function: $FUNCTION"
+            supabase functions deploy "$FUNCTION" --project-ref $SUPABASE_PROJECT_REF
+          else
+            echo "Deploying all Edge Functions..."
+            for dir in supabase/functions/*/; do
+              fn=$(basename "$dir")
+              if [ -f "$dir/index.ts" ]; then
+                echo ""
+                echo "--- Deploying: $fn ---"
+                supabase functions deploy "$fn" --project-ref $SUPABASE_PROJECT_REF || {
+                  echo "::warning::Failed to deploy $fn"
+                }
+              fi
+            done
+          fi
+
+          echo ""
+          echo "All functions deployed successfully!"
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
