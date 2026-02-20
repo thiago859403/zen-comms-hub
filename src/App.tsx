@@ -7,6 +7,7 @@ import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { initMonitoring } from "@/lib/monitoring";
+import SentryRouteTracker from "@/components/SentryRouteTracker";
 import { Loader2 } from "lucide-react";
 
 // Inicializar monitoramento o mais cedo possível (antes do render)
@@ -95,6 +96,7 @@ const App = () => {
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <SentryRouteTracker />
             <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/auth" element={<Auth />} />
