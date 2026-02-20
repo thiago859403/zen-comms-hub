@@ -1,7 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback, useRef, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { setUser as setMonitoringUser } from '@/lib/monitoring';
+import { setSentryContext, clearSentryContext } from '@/lib/sentryContext';
 import type { User, AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 interface Empresa {
@@ -105,7 +105,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfileAndEmpresa = useCallback(async (
     userId: string,
     retryCount = 0
-  ): Promise<{ empresaId: number | null; empresa: Empresa | null; profile: Profile | null }> => {
+  ): Promise<{ empresaId: number | null; empresa: Empresa | null; profile: Profile | null; planName: string | null }> => {
     const maxRetries = 2;
     const retryDelay = 400;
 
@@ -142,12 +142,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           code: profileError.code, 
           message: profileError.message 
         });
-        return { empresaId: null, empresa: null, profile: null };
+        return { empresaId: null, empresa: null, profile: null, planName: null };
       }
 
       if (!profileData) {
         console.warn('[AuthProvider] Profile not found after retries');
-        return { empresaId: null, empresa: null, profile: null };
+        return { empresaId: null, empresa: null, profile: null, planName: null };
       }
 
       const empresaId = profileData.empresa_id || null;
@@ -157,6 +157,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       };
 
       let empresa: Empresa | null = null;
+      let planName: string | null = null;
       if (empresaId) {
         const { data: empresaData, error: empresaError } = await supabase
           .from('empresas')
@@ -172,6 +173,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             status: empresaData.status,
             is_active: empresaData.is_active,
           };
+
+          // Buscar nome do plano (lightweight) para contexto Sentry
+          if (empresaData.plano_id) {
+            const { data: planoData } = await supabase
+              .from('planos')
+              .select('nome')
+              .eq('id', empresaData.plano_id)
+              .single();
+            planName = planoData?.nome ?? null;
+          }
         } else if (empresaError) {
           console.warn('[AuthProvider] Empresa error', { 
             code: empresaError.code, 
@@ -180,12 +191,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
 
-      return { empresaId, empresa, profile };
+      return { empresaId, empresa, profile, planName };
     } catch (error) {
       console.error('[AuthProvider] Exception in fetchProfileAndEmpresa', {
         message: error instanceof Error ? error.message : String(error),
       });
-      return { empresaId: null, empresa: null, profile: null };
+      return { empresaId: null, empresa: null, profile: null, planName: null };
     }
   }, []);
 
@@ -202,7 +213,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // SIGNED_OUT: limpar estado imediatamente
     if (event === 'SIGNED_OUT' || !session?.user) {
-      setMonitoringUser(null);
+      clearSentryContext();
       setAuthState({
         user: null,
         isLoading: false,
@@ -228,11 +239,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       // Usar retry apenas no primeiro carregamento (pode ser após signup)
       const retryCount = !isInitialized.current ? 2 : 0;
-      const { empresaId, empresa, profile } = await fetchProfileAndEmpresa(
+      const { empresaId, empresa, profile, planName } = await fetchProfileAndEmpresa(
         session.user.id, 
         retryCount
       );
-
 
       setAuthState({
         user: session.user,
@@ -243,11 +253,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         profile,
       });
 
-      // Identificar usuário no Sentry
-      setMonitoringUser({
-        id: session.user.id,
-        email: session.user.email,
-        empresa_id: empresaId,
+      // Enriquecer contexto multi-tenant no Sentry
+      setSentryContext({
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name as string | undefined,
+        },
+        tenant: empresa
+          ? { id: empresa.id, name: empresa.nome, status: empresa.status }
+          : null,
+        plan: empresa?.plano_id
+          ? { id: empresa.plano_id, name: planName ?? 'unknown' }
+          : null,
       });
       
       isInitialized.current = true;
@@ -335,7 +353,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [authState.isLoading]);
 
   const signOut = useCallback(async () => {
-    setMonitoringUser(null); // Limpar usuário no Sentry
+    clearSentryContext(); // Limpar contexto multi-tenant no Sentry
     await supabase.auth.signOut();
     navigate('/auth');
   }, [navigate]);

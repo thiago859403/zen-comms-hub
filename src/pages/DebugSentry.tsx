@@ -7,10 +7,12 @@ import {
   addBreadcrumb,
   isMonitoringEnabled,
 } from "@/lib/monitoring";
+import { getCurrentSentryContext } from "@/lib/sentryContext";
+import { APP_VERSION, APP_ENV } from "@/config/release";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Bug, Lock, MessageSquare, ShieldCheck, ShieldOff } from "lucide-react";
+import { AlertTriangle, Bug, Lock, MessageSquare, ShieldCheck, ShieldOff, User, Building2, CreditCard } from "lucide-react";
 
 const DebugSentry = () => {
   const location = useLocation();
@@ -18,7 +20,8 @@ const DebugSentry = () => {
   const [eventsSent, setEventsSent] = useState({ exceptions: 0, messages: 0 });
 
   const sentryActive = isMonitoringEnabled();
-  const environment = import.meta.env.VITE_APP_ENV || "development";
+  const environment = APP_ENV;
+  const sentryCtx = getCurrentSentryContext();
 
   // Extrair keys para comparação
   const urlKey = new URLSearchParams(location.search).get("key") ?? "";
@@ -246,6 +249,67 @@ const DebugSentry = () => {
               <MessageSquare className="h-4 w-4" />
               Enviar MENSAGEM de teste
             </Button>
+          </CardContent>
+        </Card>
+
+        {/* Sentry Context atual */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Contexto Sentry Atual</CardTitle>
+            <CardDescription>
+              Dados que são enviados junto com cada evento ao Sentry.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* User */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <User className="h-4 w-4 text-blue-500" />
+                User
+              </div>
+              <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">id:</span><span>{sentryCtx.user?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">email:</span><span>{sentryCtx.user?.email ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{sentryCtx.user?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+              </div>
+            </div>
+
+            {/* Tenant */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <Building2 className="h-4 w-4 text-purple-500" />
+                Tenant
+              </div>
+              <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">tenant_id:</span><span>{sentryCtx.tenant?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{sentryCtx.tenant?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">status:</span><span>{sentryCtx.tenant?.status ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+              </div>
+            </div>
+
+            {/* Subscription/Plan */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CreditCard className="h-4 w-4 text-green-500" />
+                Subscription
+              </div>
+              <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
+                <div className="flex justify-between"><span className="text-muted-foreground">plan_id:</span><span>{sentryCtx.plan?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">plan:</span><span>{sentryCtx.plan?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+              </div>
+            </div>
+
+            {/* Tags */}
+            <div className="space-y-1">
+              <div className="text-sm font-medium">Tags</div>
+              <div className="flex flex-wrap gap-2">
+                <Badge variant="outline" className="font-mono text-[10px]">app_version: {APP_VERSION}</Badge>
+                <Badge variant="outline" className="font-mono text-[10px]">app_env: {APP_ENV}</Badge>
+                <Badge variant="outline" className="font-mono text-[10px]">route: {location.pathname}</Badge>
+                {sentryCtx.tenant?.id && <Badge variant="outline" className="font-mono text-[10px]">tenant_id: {sentryCtx.tenant.id}</Badge>}
+                {sentryCtx.plan?.name && <Badge variant="outline" className="font-mono text-[10px]">plan: {sentryCtx.plan.name}</Badge>}
+              </div>
+            </div>
           </CardContent>
         </Card>
 
