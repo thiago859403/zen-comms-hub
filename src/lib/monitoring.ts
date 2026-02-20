@@ -8,6 +8,7 @@
 // =====================================================
 
 import * as Sentry from '@sentry/react';
+import { APP_VERSION, APP_ENV } from '@/config/release';
 
 // Flag que indica se o Sentry foi inicializado com sucesso
 let isInitialized = false;
@@ -102,8 +103,8 @@ export function initMonitoring(options: InitMonitoringOptions = {}): void {
   try {
     Sentry.init({
       dsn,
-      environment: options.environment || import.meta.env.VITE_APP_ENV || 'development',
-      release: options.release || import.meta.env.VITE_APP_VERSION || undefined,
+      environment: options.environment || APP_ENV,
+      release: options.release || APP_VERSION,
       integrations: [
         Sentry.browserTracingIntegration(),
         Sentry.replayIntegration({

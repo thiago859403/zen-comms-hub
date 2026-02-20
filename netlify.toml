@@ -6,7 +6,7 @@
 # =============================================================================
 
 [build]
-  command = "pnpm install --frozen-lockfile && pnpm build"
+  command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
   publish = "dist"
 
 [build.environment]
@@ -30,7 +30,7 @@
 # Env vars configuradas no Netlify UI (Site settings → Environment variables).
 # -----------------------------------------------------------------------------
 [context.production]
-  command = "pnpm install --frozen-lockfile && pnpm build"
+  command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
   [context.production.environment]
     VITE_APP_ENV = "production"
 
@@ -42,7 +42,7 @@
 # e VITE_SUPABASE_ANON_KEY neste contexto via Netlify UI.
 # -----------------------------------------------------------------------------
 [context.deploy-preview]
-  command = "pnpm install --frozen-lockfile && pnpm build"
+  command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
   [context.deploy-preview.environment]
     VITE_APP_ENV = "preview"
 
@@ -51,7 +51,7 @@
 # Deploy automático para a branch dev (ambiente de desenvolvimento).
 # -----------------------------------------------------------------------------
 [context.branch-deploy]
-  command = "pnpm install --frozen-lockfile && pnpm build"
+  command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
   [context.branch-deploy.environment]
     VITE_APP_ENV = "development"
 
