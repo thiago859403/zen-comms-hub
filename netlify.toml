@@ -16,23 +16,23 @@
   # PNPM_VERSION = "9"
 
 # -----------------------------------------------------------------------------
-# SPA Fallback — redireciona todas as rotas para /index.html (React Router)
-# DEVE ser a última regra de redirect.
-# -----------------------------------------------------------------------------
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
-
-# -----------------------------------------------------------------------------
 # Contexto: Production (branch main)
 # Deploy automático a cada push em main.
 # Env vars configuradas no Netlify UI (Site settings → Environment variables).
+# Sourcemaps bloqueados neste contexto (ver redirect abaixo).
 # -----------------------------------------------------------------------------
 [context.production]
   command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
   [context.production.environment]
     VITE_APP_ENV = "production"
+
+  # Bloquear sourcemaps em produção — retorna 404 para /*.map
+  # Impede que o código-fonte seja exposto publicamente.
+  [[context.production.redirects]]
+    from = "/*.map"
+    to = "/404"
+    status = 404
+    force = true
 
 # -----------------------------------------------------------------------------
 # Contexto: Deploy Preview (Pull Requests)
@@ -40,6 +40,7 @@
 # Usa as mesmas env vars de production (configurar no Netlify UI).
 # Para usar um Supabase de staging separado, sobrescreva VITE_SUPABASE_URL
 # e VITE_SUPABASE_ANON_KEY neste contexto via Netlify UI.
+# Sourcemaps ficam acessíveis neste contexto para facilitar debug.
 # -----------------------------------------------------------------------------
 [context.deploy-preview]
   command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
@@ -49,6 +50,7 @@
 # -----------------------------------------------------------------------------
 # Contexto: Branch Deploy (branch dev)
 # Deploy automático para a branch dev (ambiente de desenvolvimento).
+# Sourcemaps ficam acessíveis neste contexto para facilitar debug.
 # -----------------------------------------------------------------------------
 [context.branch-deploy]
   command = "pnpm install --frozen-lockfile && node scripts/compute-release.mjs"
@@ -64,3 +66,21 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# -----------------------------------------------------------------------------
+# Headers para sourcemaps — impedir indexação por motores de busca
+# Aplica-se a todos os contextos (produção, preview, branch-deploy).
+# -----------------------------------------------------------------------------
+[[headers]]
+  for = "/*.map"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# -----------------------------------------------------------------------------
+# SPA Fallback — redireciona todas as rotas para /index.html (React Router)
+# DEVE ser a última regra de redirect.
+# -----------------------------------------------------------------------------
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
