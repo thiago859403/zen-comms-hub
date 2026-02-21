@@ -24,6 +24,7 @@ interface AuthState {
   empresaId: number | null;
   empresa: Empresa | null;
   profile: Profile | null;
+  planName: string | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -88,6 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     empresaId: persistedState?.empresaId || null,
     empresa: null,
     profile: null,
+    planName: null,
   });
   
   const navigate = useNavigate();
@@ -213,7 +215,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // SIGNED_OUT: limpar estado imediatamente
     if (event === 'SIGNED_OUT' || !session?.user) {
-      clearSentryContext();
       setAuthState({
         user: null,
         isLoading: false,
@@ -221,6 +222,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         empresaId: null,
         empresa: null,
         profile: null,
+        planName: null,
       });
       return;
     }
@@ -251,21 +253,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         empresaId,
         empresa,
         profile,
-      });
-
-      // Enriquecer contexto multi-tenant no Sentry
-      setSentryContext({
-        user: {
-          id: session.user.id,
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name as string | undefined,
-        },
-        tenant: empresa
-          ? { id: empresa.id, name: empresa.nome, status: empresa.status }
-          : null,
-        plan: empresa?.plano_id
-          ? { id: empresa.plano_id, name: planName ?? 'unknown' }
-          : null,
+        planName,
       });
       
       isInitialized.current = true;
@@ -282,6 +270,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         empresaId: null,
         empresa: null,
         profile: null,
+        planName: null,
       });
     } finally {
       fetchingRef.current = false;
@@ -351,6 +340,35 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => clearTimeout(timeoutId);
   }, [authState.isLoading]);
+
+  // Atualizar Sentry context reativamente sempre que user/empresa/planName mudarem
+  useEffect(() => {
+    if (!authState.user) {
+      clearSentryContext();
+      return;
+    }
+
+    setSentryContext({
+      user: {
+        id: authState.user.id,
+        email: authState.user.email,
+        name: authState.user.user_metadata?.full_name as string | undefined,
+      },
+      tenant: authState.empresa
+        ? {
+            id: authState.empresa.id,
+            name: authState.empresa.nome,
+            status: authState.empresa.status,
+          }
+        : null,
+      plan: authState.empresa?.plano_id
+        ? {
+            id: authState.empresa.plano_id,
+            name: authState.planName ?? 'unknown',
+          }
+        : null,
+    });
+  }, [authState.user, authState.empresa, authState.planName]);
 
   const signOut = useCallback(async () => {
     clearSentryContext(); // Limpar contexto multi-tenant no Sentry
