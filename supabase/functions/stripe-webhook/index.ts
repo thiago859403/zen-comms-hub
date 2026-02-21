@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -69,6 +70,24 @@ serve(async (req) => {
   }
 
   try {
+    // Rate limiting: 60 requisições/minuto por IP (webhook público do Stripe)
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const clientIP = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(supabaseService, {
+      key: 'stripe-webhook',
+      limit: 60,
+      windowSeconds: 60,
+      identifier: clientIP,
+    });
+    
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET');
     if (!STRIPE_WEBHOOK_SECRET) {
       console.error('STRIPE_WEBHOOK_SECRET não configurado');

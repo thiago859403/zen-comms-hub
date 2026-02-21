@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
+import { APP_VERSION } from "@/config/release";
 import ChatAssistant from "./ChatAssistant";
 import HelpDropdown from "./HelpDropdown";
 import NotificationsPanel from "./NotificationsPanel";
@@ -463,6 +464,11 @@ const DashboardLayout = ({
         <main className="flex-1 overflow-auto p-4 md:p-6" id="main-content">
           {children}
         </main>
+
+        {/* Version footer */}
+        <footer className="shrink-0 border-t border-border/40 bg-muted/30 px-4 py-1.5 text-[11px] text-muted-foreground text-right select-none">
+          Version: {APP_VERSION}
+        </footer>
       </div>
 
       {/* Chat Assistant */}

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -60,6 +61,22 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Rate limiting: 60 requisições/minuto por IP (webhook público do WhatsApp)
+    // Aplicar apenas em POST (GET é verificação)
+    if (req.method === 'POST') {
+      const clientIP = getClientIP(req);
+      const rateLimitResult = await checkRateLimit(supabaseClient, {
+        key: 'whatsapp-webhook',
+        limit: 60,
+        windowSeconds: 60,
+        identifier: clientIP,
+      });
+      
+      if (!rateLimitResult.allowed) {
+        return createRateLimitResponse(rateLimitResult);
+      }
+    }
 
     // Webhook verification (GET request from WhatsApp)
     if (req.method === 'GET') {
