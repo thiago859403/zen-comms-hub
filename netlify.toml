@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────
+# Netlify Configuration — Nuvia
+# ─────────────────────────────────────────────────
+
+[build]
+  command = "pnpm build"
+  publish = "dist"
+
+# ── Variáveis de ambiente por contexto ───────────
+
+[context.production.environment]
+  VITE_APP_ENV = "production"
+
+[context.deploy-preview.environment]
+  VITE_APP_ENV = "preview"
+
+[context.branch-deploy.environment]
+  VITE_APP_ENV = "staging"
+
+# ── Headers globais ──────────────────────────────
+# Impedir indexação dos sourcemaps por motores de busca
+[[headers]]
+  for = "/*.map"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# ── Segurança: Bloquear sourcemaps em produção ──
+# Em produção retornamos 404 para qualquer .map,
+# impedindo que o código-fonte seja exposto.
+# Em deploy-preview e branch-deploy os sourcemaps
+# ficam acessíveis para facilitar debug.
+[context.production]
+  [[context.production.redirects]]
+    from = "/*.map"
+    to = "/404"
+    status = 404
+    force = true
+
+# ── SPA Redirect (client-side routing) ───────────
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
