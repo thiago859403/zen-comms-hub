@@ -341,12 +341,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => clearTimeout(timeoutId);
   }, [authState.isLoading]);
 
-  // Atualizar Sentry context reativamente sempre que user/empresa/planName mudarem
+  // Atualizar Sentry context reativamente sempre que user/empresa/empresaId/planName mudarem
+  // Usa empresaId como fallback para tenant_id quando empresa ainda não carregou
   useEffect(() => {
     if (!authState.user) {
       clearSentryContext();
       return;
     }
+
+    // Tenant: empresa completa se disponível, senão fallback com empresaId
+    const tenant = authState.empresa
+      ? {
+          id: authState.empresa.id,
+          name: authState.empresa.nome,
+          status: authState.empresa.status,
+        }
+      : authState.empresaId
+        ? {
+            id: authState.empresaId,
+            name: 'unknown',
+            status: 'unknown',
+          }
+        : null;
+
+    // Plan: dados completos se empresa carregou, senão fallback com planName
+    const plan = authState.empresa?.plano_id
+      ? {
+          id: authState.empresa.plano_id,
+          name: authState.planName ?? 'unknown',
+        }
+      : authState.planName
+        ? {
+            id: null,
+            name: authState.planName,
+          }
+        : null;
 
     setSentryContext({
       user: {
@@ -354,21 +383,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: authState.user.email,
         name: authState.user.user_metadata?.full_name as string | undefined,
       },
-      tenant: authState.empresa
-        ? {
-            id: authState.empresa.id,
-            name: authState.empresa.nome,
-            status: authState.empresa.status,
-          }
-        : null,
-      plan: authState.empresa?.plano_id
-        ? {
-            id: authState.empresa.plano_id,
-            name: authState.planName ?? 'unknown',
-          }
-        : null,
+      tenant,
+      plan,
     });
-  }, [authState.user, authState.empresa, authState.planName]);
+  }, [authState.user, authState.empresa, authState.empresaId, authState.planName]);
 
   const signOut = useCallback(async () => {
     clearSentryContext(); // Limpar contexto multi-tenant no Sentry
