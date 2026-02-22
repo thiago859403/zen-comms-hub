@@ -279,6 +279,9 @@ const DebugSentry = () => {
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Building2 className="h-4 w-4 text-purple-500" />
                 Tenant
+                {sentryCtx.tenant && sentryCtx.tenant.name === 'unknown' && (
+                  <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-400">fallback</Badge>
+                )}
               </div>
               <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
                 <div className="flex justify-between"><span className="text-muted-foreground">tenant_id:</span><span>{sentryCtx.tenant?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
@@ -292,6 +295,9 @@ const DebugSentry = () => {
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CreditCard className="h-4 w-4 text-green-500" />
                 Subscription
+                {sentryCtx.plan && sentryCtx.plan.id === null && (
+                  <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-400">fallback</Badge>
+                )}
               </div>
               <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
                 <div className="flex justify-between"><span className="text-muted-foreground">plan_id:</span><span>{sentryCtx.plan?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
