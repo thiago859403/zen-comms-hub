@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,9 +25,65 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Rate limiting: verificar se é chamada autenticada ou pública
+    const authHeader = req.headers.get('Authorization');
+    let rateLimitUserId: string | null = null;
+    let rateLimitEmpresaId: number | null = null;
+
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabaseClient.auth.getUser(token);
+      if (user) {
+        rateLimitUserId = user.id;
+        const { data: profile } = await supabaseClient
+          .from('profiles')
+          .select('empresa_id')
+          .eq('id', user.id)
+          .single();
+        rateLimitEmpresaId = profile?.empresa_id ?? null;
+      }
+    }
+
+    if (rateLimitUserId) {
+      // Autenticado: rate limit duplo (user 30/min + empresa 200/min)
+      const rlUser = await checkRateLimit(supabaseClient, {
+        key: 'bot-process-message',
+        limit: 30,
+        windowSeconds: 60,
+        identifier: `user-${rateLimitUserId}`,
+      });
+      if (!rlUser.allowed) {
+        return createRateLimitResponse(rlUser);
+      }
+
+      if (rateLimitEmpresaId) {
+        const rlEmpresa = await checkRateLimit(supabaseClient, {
+          key: 'bot-process-message',
+          limit: 200,
+          windowSeconds: 60,
+          identifier: `empresa-${rateLimitEmpresaId}`,
+        });
+        if (!rlEmpresa.allowed) {
+          return createRateLimitResponse(rlEmpresa);
+        }
+      }
+    } else {
+      // Público: rate limit por IP (30/min)
+      const clientIP = getClientIP(req);
+      const rl = await checkRateLimit(supabaseClient, {
+        key: 'bot-process-message',
+        limit: 30,
+        windowSeconds: 60,
+        identifier: clientIP,
+      });
+      if (!rl.allowed) {
+        return createRateLimitResponse(rl);
+      }
+    }
+
     const { conversation_id, message, contact_name, contact_phone }: ProcessMessageRequest = await req.json();
 
-    console.log('Processing message:', { conversation_id, message });
+    console.log('Processing message:', { conversation_id });
 
     // Get bot config
     const { data: botConfig } = await supabaseClient
@@ -141,24 +198,23 @@ serve(async (req) => {
         .eq('id', conversation_id);
     }
 
-    console.log('Message processed successfully:', {
+    console.log('Message processed:', {
+      conversation_id,
       mode: processingMode,
-      response: botResponse,
-      transferred: shouldTransferToHuman
+      transferred: shouldTransferToHuman,
     });
 
     return new Response(JSON.stringify({
       success: true,
       bot_processed: true,
       mode: processingMode,
-      response: botResponse,
       transferred_to_human: shouldTransferToHuman
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (error) {
-    console.error('Error processing message:', error);
+    console.error('Error processing message:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
@@ -245,12 +301,12 @@ async function processAIMode(
               apiKeyId = keyData.id;
             }
             
-            console.log(`Using BYOK key for provider: ${prov}`);
+            console.log('Using BYOK key for provider:', prov);
             break;
           }
         }
       } catch (error) {
-        console.error('Error fetching BYOK key:', error);
+        console.error('Error fetching BYOK key:', error instanceof Error ? error.message : 'Unknown error');
       }
     }
 
@@ -262,7 +318,7 @@ async function processAIMode(
         provider = 'openai'; // Assumir OpenAI para chave padrão
         console.log('Using platform default API key (fallback)');
       } else {
-        console.log('No API key available (neither BYOK nor platform default), skipping AI mode');
+        console.log('No API key available, skipping AI mode');
         return '';
       }
     }
@@ -300,7 +356,6 @@ async function processAIMode(
     // Get knowledge base if enabled
     let knowledgeContext = '';
     if (botConfig.knowledge_base_enabled) {
-      // Buscar na base de conhecimento (implementar conforme necessário)
       knowledgeContext = 'Base de conhecimento disponível.';
     }
 
@@ -330,7 +385,7 @@ IMPORTANTE:
       }))
     ];
 
-    console.log('Calling AI with messages:', messages.length, 'Provider:', provider);
+    console.log('Calling AI, messages:', messages.length, 'provider:', provider);
 
     // Determinar endpoint e headers baseado no provider
     let apiUrl = '';
@@ -350,12 +405,10 @@ IMPORTANTE:
         headers['anthropic-version'] = '2023-06-01';
         break;
       case 'google':
-        // Google pode usar diferentes endpoints, assumindo Vertex AI ou similar
-        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions'; // Fallback para gateway
+        apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;
         break;
       default:
-        // Fallback para gateway Lovable
         apiUrl = 'https://ai.gateway.lovable.dev/v1/chat/completions';
         headers['Authorization'] = `Bearer ${apiKey}`;
     }
@@ -363,7 +416,6 @@ IMPORTANTE:
     // Preparar body baseado no provider
     let requestBody: any;
     if (provider === 'claude' || provider === 'anthropic') {
-      // Anthropic usa formato diferente
       requestBody = {
         model: 'claude-3-haiku-20240307',
         max_tokens: 200,
@@ -374,7 +426,6 @@ IMPORTANTE:
         system: messages.find((m: any) => m.role === 'system')?.content || '',
       };
     } else {
-      // OpenAI e outros usam formato padrão
       requestBody = {
         model: provider === 'openai' ? 'gpt-3.5-turbo' : 'google/gemini-2.5-flash',
         messages,
@@ -390,8 +441,7 @@ IMPORTANTE:
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
+      console.error('AI API error, status:', response.status);
       return '';
     }
 
@@ -409,7 +459,7 @@ IMPORTANTE:
       tokensUsed = data.usage?.total_tokens || 0;
     }
 
-    console.log('AI response:', aiResponse, 'Tokens:', tokensUsed);
+    console.log('AI response generated, tokens:', tokensUsed);
 
     // Atualizar conversa com api_key_id e tokens_usados
     if (conversation?.empresa_id) {
@@ -429,7 +479,7 @@ IMPORTANTE:
     
     return aiResponse;
   } catch (error) {
-    console.error('Error in AI mode:', error);
+    console.error('Error in AI mode:', error instanceof Error ? error.message : 'Unknown error');
     return '';
   }
 }
@@ -489,7 +539,7 @@ async function processFlowMode(
 
     return '';
   } catch (error) {
-    console.error('Error in flow mode:', error);
+    console.error('Error in flow mode:', error instanceof Error ? error.message : 'Unknown error');
     return '';
   }
 }
@@ -504,7 +554,7 @@ async function sendWhatsAppMessage(
   try {
     const { data: config } = await supabaseClient
       .from('whatsapp_config')
-      .select('*')
+      .select('phone_number_id, access_token, status')
       .eq('status', 'connected')
       .single();
 
@@ -546,11 +596,11 @@ async function sendWhatsAppMessage(
           whatsapp_message_id: data.messages[0].id
         });
 
-      console.log('Message sent successfully');
+      console.log('Bot message sent for conversation:', conversationId);
     } else {
-      console.error('Failed to send WhatsApp message:', await response.text());
+      console.error('Failed to send WhatsApp message, status:', response.status);
     }
   } catch (error) {
-    console.error('Error sending WhatsApp message:', error);
+    console.error('Error sending WhatsApp message:', error instanceof Error ? error.message : 'Unknown error');
   }
 }

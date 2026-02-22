@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,49 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
+
+    // Extrair user do JWT para rate limiting
+    const authHeader = req.headers.get('Authorization');
+    const token = authHeader?.replace('Bearer ', '') ?? '';
+    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+
+    if (userError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Buscar empresa_id para rate limiting duplo
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('empresa_id')
+      .eq('id', user.id)
+      .single();
+
+    // Rate limit por user: 30 req/min
+    const rlUser = await checkRateLimit(supabaseClient, {
+      key: 'whatsapp-send-message',
+      limit: 30,
+      windowSeconds: 60,
+      identifier: `user-${user.id}`,
+    });
+    if (!rlUser.allowed) {
+      return createRateLimitResponse(rlUser);
+    }
+
+    // Rate limit por empresa: 200 req/min
+    if (profile?.empresa_id) {
+      const rlEmpresa = await checkRateLimit(supabaseClient, {
+        key: 'whatsapp-send-message',
+        limit: 200,
+        windowSeconds: 60,
+        identifier: `empresa-${profile.empresa_id}`,
+      });
+      if (!rlEmpresa.allowed) {
+        return createRateLimitResponse(rlEmpresa);
+      }
+    }
 
     const { to, message, conversation_id }: SendMessageRequest = await req.json();
 
@@ -76,7 +120,7 @@ serve(async (req) => {
     const responseData = await response.json();
 
     if (!response.ok) {
-      console.error('WhatsApp API error:', responseData);
+      console.error('WhatsApp API error, status:', response.status);
       return new Response(
         JSON.stringify({ 
           error: 'Erro ao enviar mensagem via WhatsApp',
@@ -91,16 +135,12 @@ serve(async (req) => {
 
     // Save message to database if conversation_id provided
     if (conversation_id) {
-      const { data: { user } } = await supabaseClient.auth.getUser(
-        req.headers.get('Authorization')?.replace('Bearer ', '') ?? ''
-      );
-
       await supabaseClient
         .from('messages')
         .insert({
           conversation_id,
           sender_type: 'agent',
-          sender_id: user?.id,
+          sender_id: user.id,
           content: message,
           message_type: 'text',
           status: 'sent',
@@ -108,7 +148,7 @@ serve(async (req) => {
         });
     }
 
-    console.log('Message sent successfully:', responseData);
+    console.log('Message sent successfully:', { message_id: responseData.messages[0]?.id });
 
     return new Response(
       JSON.stringify({ 
@@ -122,7 +162,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error sending message:', error);
+    console.error('Error sending message:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { 

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,6 +47,23 @@ serve(async (req) => {
       );
     }
 
+    // Service role client para rate limiting e operações admin
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Rate limit sensível: 10 req/min por user (anti-spam)
+    const rlUser = await checkRateLimit(supabaseAdmin, {
+      key: 'send-invite',
+      limit: 10,
+      windowSeconds: 60,
+      identifier: `user-${user.id}`,
+    });
+    if (!rlUser.allowed) {
+      return createRateLimitResponse(rlUser);
+    }
+
     // Obter empresa do usuário
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -78,11 +96,6 @@ serve(async (req) => {
     }
 
     // Validar limite de usuários
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
     // Buscar plano da empresa
     const { data: empresa } = await supabaseAdmin
       .from('empresas')
@@ -137,10 +150,6 @@ serve(async (req) => {
     const inviteToken = crypto.randomUUID();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // Válido por 7 dias
-
-    // Salvar convite no banco (criar tabela de convites se não existir)
-    // Por enquanto, vamos criar o usuário diretamente e enviar email de boas-vindas
-    // Em produção, seria melhor ter uma tabela de convites pendentes
 
     // Criar usuário no Supabase Auth
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -236,11 +245,12 @@ serve(async (req) => {
       });
 
       if (!brevoResponse.ok) {
-        const errorText = await brevoResponse.text();
-        console.error('Erro ao enviar email via Brevo:', errorText);
+        console.error('Email sending failed, status:', brevoResponse.status);
         // Não falhar o processo se o email não for enviado
       }
     }
+
+    console.log('Invite sent successfully:', { empresa_id: profile.empresa_id, role });
 
     return new Response(
       JSON.stringify({
@@ -253,9 +263,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

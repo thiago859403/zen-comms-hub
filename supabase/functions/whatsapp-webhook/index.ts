@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,13 +62,25 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
+    // Rate limit: 60 req/min por IP (webhook público)
+    const clientIP = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(supabaseClient, {
+      key: 'whatsapp-webhook',
+      limit: 60,
+      windowSeconds: 60,
+      identifier: clientIP,
+    });
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     // Webhook verification (GET request from WhatsApp)
     if (req.method === 'GET') {
       const mode = url.searchParams.get('hub.mode');
       const token = url.searchParams.get('hub.verify_token');
       const challenge = url.searchParams.get('hub.challenge');
 
-      console.log('Webhook verification request:', { mode, token });
+      console.log('Webhook verification request:', { mode });
 
       // Get verify token from database
       const { data: config } = await supabaseClient
@@ -90,7 +103,7 @@ serve(async (req) => {
     // Handle incoming messages (POST request)
     if (req.method === 'POST') {
       const body: WebhookMessage = await req.json();
-      console.log('Received webhook:', JSON.stringify(body, null, 2));
+      console.log('Webhook received', { entries: body.entry?.length });
 
       // Process each entry
       for (const entry of body.entry) {
@@ -124,7 +137,7 @@ serve(async (req) => {
                   .single();
 
                 if (convError) {
-                  console.error('Error creating conversation:', convError);
+                  console.error('Error creating conversation:', convError.message);
                   continue;
                 }
                 conversation = newConv;
@@ -154,17 +167,16 @@ serve(async (req) => {
                   whatsapp_message_id: message.id,
                   metadata: {
                     timestamp: message.timestamp,
-                    raw_message: message
                   }
                 });
 
               if (msgError) {
-                console.error('Error saving message:', msgError);
+                console.error('Error saving message:', msgError.message);
               }
 
               console.log('Message processed:', {
                 conversation_id: conversation.id,
-                message_id: message.id
+                type: messageType,
               });
 
               // Process with bot
@@ -187,13 +199,12 @@ serve(async (req) => {
                 );
 
                 if (botResponse.ok) {
-                  const botData = await botResponse.json();
-                  console.log('Bot processed message:', botData);
+                  console.log('Bot processed message for conversation:', conversation.id);
                 } else {
-                  console.error('Bot processing failed:', await botResponse.text());
+                  console.error('Bot processing failed, status:', botResponse.status);
                 }
               } catch (botError) {
-                console.error('Error calling bot processor:', botError);
+                console.error('Error calling bot processor:', botError instanceof Error ? botError.message : 'Unknown error');
               }
             }
           }
@@ -206,7 +217,7 @@ serve(async (req) => {
                 .update({ status: status.status })
                 .eq('whatsapp_message_id', status.id);
 
-              console.log('Message status updated:', {
+              console.log('Status updated:', {
                 message_id: status.id,
                 status: status.status
               });
@@ -224,9 +235,9 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
 
   } catch (error) {
-    console.error('Webhook error:', error);
+    console.error('Webhook error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
