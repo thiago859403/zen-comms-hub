@@ -178,11 +178,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
           // Buscar nome do plano (lightweight) para contexto Sentry
           if (empresaData.plano_id) {
-            const { data: planoData } = await supabase
+            const { data: planoData, error: planoError } = await supabase
               .from('planos')
               .select('nome')
               .eq('id', empresaData.plano_id)
               .single();
+
+            if (planoError) {
+              console.warn('[AuthProvider] Plano query error', {
+                code: planoError.code,
+                message: planoError.message,
+                plano_id: empresaData.plano_id,
+              });
+            }
             planName = planoData?.nome ?? null;
           }
         } else if (empresaError) {
