@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkRateLimit, createRateLimitResponse, getClientIP } from "../_shared/rate-limit.ts";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,7 +59,7 @@ async function verifyStripeSignature(
       return result === 0;
     });
   } catch (error) {
-    console.error('Signature verification failed');
+    console.error('Erro ao verificar assinatura:', error);
     return false;
   }
 }
@@ -70,27 +70,27 @@ serve(async (req) => {
   }
 
   try {
-    // Cliente service role para rate limiting e operações
-    const supabaseClient = createClient(
+    // Rate limiting: 60 requisições/minuto por IP (webhook público do Stripe)
+    const supabaseService = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
-
-    // Rate limit: 60 req/min por IP (webhook público)
+    
     const clientIP = getClientIP(req);
-    const rateLimitResult = await checkRateLimit(supabaseClient, {
+    const rateLimitResult = await checkRateLimit(supabaseService, {
       key: 'stripe-webhook',
       limit: 60,
       windowSeconds: 60,
       identifier: clientIP,
     });
+    
     if (!rateLimitResult.allowed) {
       return createRateLimitResponse(rateLimitResult);
     }
 
     const STRIPE_WEBHOOK_SECRET = Deno.env.get('STRIPE_WEBHOOK_SECRET');
     if (!STRIPE_WEBHOOK_SECRET) {
-      console.error('STRIPE_WEBHOOK_SECRET not configured');
+      console.error('STRIPE_WEBHOOK_SECRET não configurado');
       return new Response(
         JSON.stringify({ error: 'Webhook secret não configurado' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -112,7 +112,7 @@ serve(async (req) => {
     // Verificar assinatura
     const isValid = await verifyStripeSignature(payload, signature, STRIPE_WEBHOOK_SECRET);
     if (!isValid) {
-      console.error('Invalid webhook signature');
+      console.error('Assinatura inválida');
       return new Response(
         JSON.stringify({ error: 'Invalid signature' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -122,7 +122,13 @@ serve(async (req) => {
     // Parse do evento
     const event = JSON.parse(payload);
 
-    console.log('Stripe event:', event.type);
+    // Cliente Supabase com service role (bypass RLS)
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    console.log(`Processando evento Stripe: ${event.type}`);
 
     // Processar diferentes tipos de eventos
     switch (event.type) {
@@ -133,7 +139,7 @@ serve(async (req) => {
         const planoId = metadata.plano_id ? parseInt(metadata.plano_id) : null;
 
         if (!empresaId || !planoId) {
-          console.error('Incomplete metadata in checkout.session.completed');
+          console.error('Metadata incompleto no checkout.session.completed');
           break;
         }
 
@@ -153,9 +159,9 @@ serve(async (req) => {
           .eq('id', empresaId);
 
         if (updateError) {
-          console.error('Error updating empresa:', updateError.message);
+          console.error('Erro ao atualizar empresa:', updateError);
         } else {
-          console.log('Empresa updated:', { empresaId, planoId });
+          console.log(`Empresa ${empresaId} atualizada com plano ${planoId}`);
         }
 
         // Registrar auditoria
@@ -168,6 +174,7 @@ serve(async (req) => {
           p_metadata: JSON.stringify({
             session_id: session.id,
             plano_id: planoId,
+            customer_id: session.customer,
           }),
         });
 
@@ -186,7 +193,7 @@ serve(async (req) => {
           .single();
 
         if (empresaError || !empresa) {
-          console.error('Empresa not found for customer');
+          console.error('Empresa não encontrada para customer:', customerId);
           break;
         }
 
@@ -207,9 +214,9 @@ serve(async (req) => {
               .eq('id', empresa.id);
 
             if (updateError) {
-              console.error('Error updating plan:', updateError.message);
+              console.error('Erro ao atualizar plano:', updateError);
             } else {
-              console.log('Plan updated for empresa:', empresa.id);
+              console.log(`Plano atualizado para empresa ${empresa.id}`);
             }
           }
         }
@@ -240,7 +247,7 @@ serve(async (req) => {
           .single();
 
         if (empresaError || !empresa) {
-          console.error('Empresa not found for customer');
+          console.error('Empresa não encontrada para customer:', customerId);
           break;
         }
 
@@ -261,7 +268,7 @@ serve(async (req) => {
             })
             .eq('id', empresa.id);
 
-          console.log('Empresa downgraded to Free:', empresa.id);
+          console.log(`Empresa ${empresa.id} rebaixada para Free`);
         }
 
         break;
@@ -285,14 +292,14 @@ serve(async (req) => {
             .update({ status: 'suspended' })
             .eq('id', empresa.id);
 
-          console.log('Empresa suspended due to payment failure:', empresa.id);
+          console.log(`Empresa ${empresa.id} suspensa por falha no pagamento`);
         }
 
         break;
       }
 
       default:
-        console.log('Unhandled event type:', event.type);
+        console.log(`Evento não tratado: ${event.type}`);
     }
 
     return new Response(
@@ -303,9 +310,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Webhook processing error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error processing webhook:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

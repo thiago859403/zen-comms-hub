@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
+import { checkRateLimit, createRateLimitResponse, getClientIP } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +47,23 @@ serve(async (req) => {
       );
     }
 
+    // Rate limiting: 10 requisições/minuto por user_id
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+    
+    const rateLimitResult = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-checkout',
+      limit: 10,
+      windowSeconds: 60,
+      identifier: user.id,
+    });
+    
+    if (!rateLimitResult.allowed) {
+      return createRateLimitResponse(rateLimitResult);
+    }
+
     // Obter perfil e empresa do usuário
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -59,34 +76,6 @@ serve(async (req) => {
         JSON.stringify({ error: 'Empresa não encontrada' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Service role client para rate limiting
-    const supabaseService = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    // Rate limit por user: 30 req/min
-    const rlUser = await checkRateLimit(supabaseService, {
-      key: 'stripe-create-checkout-session',
-      limit: 30,
-      windowSeconds: 60,
-      identifier: `user-${user.id}`,
-    });
-    if (!rlUser.allowed) {
-      return createRateLimitResponse(rlUser);
-    }
-
-    // Rate limit por empresa: 200 req/min
-    const rlEmpresa = await checkRateLimit(supabaseService, {
-      key: 'stripe-create-checkout-session',
-      limit: 200,
-      windowSeconds: 60,
-      identifier: `empresa-${profile.empresa_id}`,
-    });
-    if (!rlEmpresa.allowed) {
-      return createRateLimitResponse(rlEmpresa);
     }
 
     const { plano_id, success_url, cancel_url }: CreateCheckoutRequest = await req.json();
@@ -163,7 +152,8 @@ serve(async (req) => {
       });
 
       if (!createCustomerResponse.ok) {
-        console.error('Error creating Stripe customer, status:', createCustomerResponse.status);
+        const errorText = await createCustomerResponse.text();
+        console.error('Erro ao criar cliente Stripe:', errorText);
         return new Response(
           JSON.stringify({ error: 'Erro ao criar cliente no Stripe' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -180,7 +170,7 @@ serve(async (req) => {
         .eq('id', empresa.id);
 
       if (updateError) {
-        console.error('Error updating stripe_customer_id:', updateError.message);
+        console.error('Erro ao atualizar stripe_customer_id:', updateError);
       }
     }
 
@@ -214,7 +204,8 @@ serve(async (req) => {
     });
 
     if (!checkoutResponse.ok) {
-      console.error('Error creating checkout session, status:', checkoutResponse.status);
+      const errorText = await checkoutResponse.text();
+      console.error('Erro ao criar checkout session:', errorText);
       return new Response(
         JSON.stringify({ error: 'Erro ao criar sessão de checkout' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -234,9 +225,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error:', error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
+import { checkRateLimit, createRateLimitResponse } from "./_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -19,16 +19,27 @@ serve(async (req) => {
   }
 
   try {
-    const supabaseClient = createClient(
+    // ─── 1. Autenticação ───────────────────────────────────────
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Cliente autenticado (respeita RLS)
+    const supabaseAuth = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader },
+        },
+      }
     );
 
-    // Extrair user do JWT para rate limiting
-    const authHeader = req.headers.get('Authorization');
-    const token = authHeader?.replace('Bearer ', '') ?? '';
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -36,37 +47,53 @@ serve(async (req) => {
       );
     }
 
-    // Buscar empresa_id para rate limiting duplo
-    const { data: profile } = await supabaseClient
+    // ─── 2. Buscar empresa_id do usuário ───────────────────────
+    const { data: profile, error: profileError } = await supabaseAuth
       .from('profiles')
       .select('empresa_id')
       .eq('id', user.id)
       .single();
 
-    // Rate limit por user: 30 req/min
-    const rlUser = await checkRateLimit(supabaseClient, {
-      key: 'whatsapp-send-message',
-      limit: 30,
+    if (profileError || !profile || !profile.empresa_id) {
+      return new Response(
+        JSON.stringify({ error: 'Empresa não encontrada para este usuário' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const empresaId = profile.empresa_id;
+
+    // ─── 3. Rate Limiting duplo (service role para bypass RLS) ─
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // 3a. Rate limit por user_id: 10 req/min (evita abuso individual)
+    const userRateLimit = await checkRateLimit(supabaseService, {
+      key: 'whatsapp-send-msg',
+      limit: 10,
       windowSeconds: 60,
       identifier: `user-${user.id}`,
     });
-    if (!rlUser.allowed) {
-      return createRateLimitResponse(rlUser);
+
+    if (!userRateLimit.allowed) {
+      return createRateLimitResponse(userRateLimit);
     }
 
-    // Rate limit por empresa: 200 req/min
-    if (profile?.empresa_id) {
-      const rlEmpresa = await checkRateLimit(supabaseClient, {
-        key: 'whatsapp-send-message',
-        limit: 200,
-        windowSeconds: 60,
-        identifier: `empresa-${profile.empresa_id}`,
-      });
-      if (!rlEmpresa.allowed) {
-        return createRateLimitResponse(rlEmpresa);
-      }
+    // 3b. Rate limit por empresa_id: 200 req/min (protege infra global)
+    const empresaRateLimit = await checkRateLimit(supabaseService, {
+      key: 'whatsapp-send-msg',
+      limit: 200,
+      windowSeconds: 60,
+      identifier: `empresa-${empresaId}`,
+    });
+
+    if (!empresaRateLimit.allowed) {
+      return createRateLimitResponse(empresaRateLimit);
     }
 
+    // ─── 4. Validar payload ────────────────────────────────────
     const { to, message, conversation_id }: SendMessageRequest = await req.json();
 
     if (!to || !message) {
@@ -79,11 +106,12 @@ serve(async (req) => {
       );
     }
 
-    // Get WhatsApp config
-    const { data: config, error: configError } = await supabaseClient
+    // ─── 5. Buscar config do WhatsApp ──────────────────────────
+    const { data: config, error: configError } = await supabaseService
       .from('whatsapp_config')
-      .select('*')
+      .select('phone_number_id, access_token')
       .eq('status', 'connected')
+      .eq('empresa_id', empresaId)
       .single();
 
     if (configError || !config) {
@@ -96,7 +124,7 @@ serve(async (req) => {
       );
     }
 
-    // Send message via WhatsApp Business API
+    // ─── 6. Enviar mensagem via WhatsApp Business API ──────────
     const whatsappUrl = `https://graph.facebook.com/v18.0/${config.phone_number_id}/messages`;
     
     const response = await fetch(whatsappUrl, {
@@ -120,7 +148,7 @@ serve(async (req) => {
     const responseData = await response.json();
 
     if (!response.ok) {
-      console.error('WhatsApp API error, status:', response.status);
+      console.error('WhatsApp API error status:', response.status);
       return new Response(
         JSON.stringify({ 
           error: 'Erro ao enviar mensagem via WhatsApp',
@@ -133,9 +161,9 @@ serve(async (req) => {
       );
     }
 
-    // Save message to database if conversation_id provided
+    // ─── 7. Salvar mensagem no banco (se conversation_id) ──────
     if (conversation_id) {
-      await supabaseClient
+      await supabaseService
         .from('messages')
         .insert({
           conversation_id,
@@ -144,16 +172,14 @@ serve(async (req) => {
           content: message,
           message_type: 'text',
           status: 'sent',
-          whatsapp_message_id: responseData.messages[0].id
+          whatsapp_message_id: responseData.messages?.[0]?.id
         });
     }
-
-    console.log('Message sent successfully:', { message_id: responseData.messages[0]?.id });
 
     return new Response(
       JSON.stringify({ 
         success: true,
-        message_id: responseData.messages[0].id
+        message_id: responseData.messages?.[0]?.id
       }),
       {
         status: 200,
@@ -162,9 +188,9 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error sending message:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('Error in whatsapp-send-message');
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
+      JSON.stringify({ error: 'Internal server error' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
