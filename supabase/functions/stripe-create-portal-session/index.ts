@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,6 +59,34 @@ serve(async (req) => {
       );
     }
 
+    // Service role client para rate limiting
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Rate limit por user: 30 req/min
+    const rlUser = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-portal-session',
+      limit: 30,
+      windowSeconds: 60,
+      identifier: `user-${user.id}`,
+    });
+    if (!rlUser.allowed) {
+      return createRateLimitResponse(rlUser);
+    }
+
+    // Rate limit por empresa: 200 req/min
+    const rlEmpresa = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-portal-session',
+      limit: 200,
+      windowSeconds: 60,
+      identifier: `empresa-${profile.empresa_id}`,
+    });
+    if (!rlEmpresa.allowed) {
+      return createRateLimitResponse(rlEmpresa);
+    }
+
     // Buscar empresa
     const { data: empresa, error: empresaError } = await supabaseClient
       .from('empresas')
@@ -105,8 +134,7 @@ serve(async (req) => {
     });
 
     if (!portalResponse.ok) {
-      const errorText = await portalResponse.text();
-      console.error('Erro ao criar portal session:', errorText);
+      console.error('Error creating portal session, status:', portalResponse.status);
       return new Response(
         JSON.stringify({ error: 'Erro ao criar sessão do portal' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -125,9 +153,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
