@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -47,6 +48,23 @@ serve(async (req) => {
       );
     }
 
+    // Service role client para rate limiting e inserção
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Rate limit sensível: 10 req/min por user
+    const rlUser = await checkRateLimit(supabaseAdmin, {
+      key: 'api-keys-insert',
+      limit: 10,
+      windowSeconds: 60,
+      identifier: `user-${user.id}`,
+    });
+    if (!rlUser.allowed) {
+      return createRateLimitResponse(rlUser);
+    }
+
     // Obter empresa do usuário
     const { data: profile, error: profileError } = await supabaseClient
       .from('profiles')
@@ -87,12 +105,6 @@ serve(async (req) => {
       );
     }
 
-    // Usar service role para chamar função de inserção (criptografa automaticamente)
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
     // Chamar função insert_api_key que criptografa automaticamente
     const { data: keyId, error: insertError } = await supabaseAdmin.rpc('insert_api_key', {
       p_empresa_id: profile.empresa_id,
@@ -105,12 +117,14 @@ serve(async (req) => {
     });
 
     if (insertError) {
-      console.error('Erro ao inserir chave:', insertError);
+      console.error('Error inserting API key:', insertError.message);
       return new Response(
         JSON.stringify({ error: insertError.message || 'Erro ao inserir chave' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('API key inserted:', { provider, key_name, empresa_id: profile.empresa_id });
 
     return new Response(
       JSON.stringify({
@@ -123,9 +137,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

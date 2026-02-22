@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { checkRateLimit, createRateLimitResponse } from "../_shared/rate-limit.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -58,6 +59,34 @@ serve(async (req) => {
         JSON.stringify({ error: 'Empresa não encontrada' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Service role client para rate limiting
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    );
+
+    // Rate limit por user: 30 req/min
+    const rlUser = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-checkout-session',
+      limit: 30,
+      windowSeconds: 60,
+      identifier: `user-${user.id}`,
+    });
+    if (!rlUser.allowed) {
+      return createRateLimitResponse(rlUser);
+    }
+
+    // Rate limit por empresa: 200 req/min
+    const rlEmpresa = await checkRateLimit(supabaseService, {
+      key: 'stripe-create-checkout-session',
+      limit: 200,
+      windowSeconds: 60,
+      identifier: `empresa-${profile.empresa_id}`,
+    });
+    if (!rlEmpresa.allowed) {
+      return createRateLimitResponse(rlEmpresa);
     }
 
     const { plano_id, success_url, cancel_url }: CreateCheckoutRequest = await req.json();
@@ -134,8 +163,7 @@ serve(async (req) => {
       });
 
       if (!createCustomerResponse.ok) {
-        const errorText = await createCustomerResponse.text();
-        console.error('Erro ao criar cliente Stripe:', errorText);
+        console.error('Error creating Stripe customer, status:', createCustomerResponse.status);
         return new Response(
           JSON.stringify({ error: 'Erro ao criar cliente no Stripe' }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -152,7 +180,7 @@ serve(async (req) => {
         .eq('id', empresa.id);
 
       if (updateError) {
-        console.error('Erro ao atualizar stripe_customer_id:', updateError);
+        console.error('Error updating stripe_customer_id:', updateError.message);
       }
     }
 
@@ -186,8 +214,7 @@ serve(async (req) => {
     });
 
     if (!checkoutResponse.ok) {
-      const errorText = await checkoutResponse.text();
-      console.error('Erro ao criar checkout session:', errorText);
+      console.error('Error creating checkout session, status:', checkoutResponse.status);
       return new Response(
         JSON.stringify({ error: 'Erro ao criar sessão de checkout' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -207,9 +234,9 @@ serve(async (req) => {
       }
     );
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error:', error instanceof Error ? error.message : 'Unknown error');
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
