@@ -1,27 +1,44 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import {
   captureException,
   captureMessage,
   addBreadcrumb,
   isMonitoringEnabled,
 } from "@/lib/monitoring";
-import { getCurrentSentryContext } from "@/lib/sentryContext";
 import { APP_VERSION, APP_ENV } from "@/config/release";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Bug, Lock, MessageSquare, ShieldCheck, ShieldOff, User, Building2, CreditCard } from "lucide-react";
+import { AlertTriangle, Bug, Lock, MessageSquare, ShieldCheck, ShieldOff, User, Building2, CreditCard, Loader2 } from "lucide-react";
 
 const DebugSentry = () => {
   const location = useLocation();
   const { toast } = useToast();
+  const { user, empresa, empresaId, planName, isLoading: authLoading } = useAuth();
   const [eventsSent, setEventsSent] = useState({ exceptions: 0, messages: 0 });
 
   const sentryActive = isMonitoringEnabled();
   const environment = APP_ENV;
-  const sentryCtx = getCurrentSentryContext();
+
+  // Dados reativos derivados do AuthState (atualizam quando empresa/plan carregam)
+  const liveUser = user
+    ? { id: user.id, email: user.email, name: user.user_metadata?.full_name as string | undefined }
+    : null;
+  const liveTenant = empresa
+    ? { id: empresa.id, name: empresa.nome, status: empresa.status }
+    : empresaId
+      ? { id: empresaId, name: 'unknown', status: 'unknown' }
+      : null;
+  const livePlan = empresa?.plano_id
+    ? { id: empresa.plano_id, name: planName ?? 'unknown' }
+    : planName
+      ? { id: null as number | null, name: planName }
+      : null;
+  const isTenantFallback = !empresa && !!empresaId;
+  const isPlanFallback = !empresa?.plano_id && !!planName;
 
   // Extrair keys para comparação
   const urlKey = new URLSearchParams(location.search).get("key") ?? "";
@@ -252,12 +269,15 @@ const DebugSentry = () => {
           </CardContent>
         </Card>
 
-        {/* Sentry Context atual */}
+        {/* Sentry Context atual (reativo via useAuth) */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Contexto Sentry Atual</CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2">
+              Contexto Sentry Atual
+              {authLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </CardTitle>
             <CardDescription>
-              Dados que são enviados junto com cada evento ao Sentry.
+              Dados que são enviados junto com cada evento ao Sentry. Atualizam em tempo real.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -268,9 +288,9 @@ const DebugSentry = () => {
                 User
               </div>
               <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground">id:</span><span>{sentryCtx.user?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">email:</span><span>{sentryCtx.user?.email ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{sentryCtx.user?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">id:</span><span>{liveUser?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">email:</span><span>{liveUser?.email ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{liveUser?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
               </div>
             </div>
 
@@ -279,14 +299,14 @@ const DebugSentry = () => {
               <div className="flex items-center gap-2 text-sm font-medium">
                 <Building2 className="h-4 w-4 text-purple-500" />
                 Tenant
-                {sentryCtx.tenant && sentryCtx.tenant.name === 'unknown' && (
-                  <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-400">fallback</Badge>
+                {isTenantFallback && (
+                  <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-400">fallback (empresaId)</Badge>
                 )}
               </div>
               <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground">tenant_id:</span><span>{sentryCtx.tenant?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{sentryCtx.tenant?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">status:</span><span>{sentryCtx.tenant?.status ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">tenant_id:</span><span>{liveTenant?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">name:</span><span>{liveTenant?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">status:</span><span>{liveTenant?.status ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
               </div>
             </div>
 
@@ -295,13 +315,13 @@ const DebugSentry = () => {
               <div className="flex items-center gap-2 text-sm font-medium">
                 <CreditCard className="h-4 w-4 text-green-500" />
                 Subscription
-                {sentryCtx.plan && sentryCtx.plan.id === null && (
+                {isPlanFallback && (
                   <Badge variant="outline" className="text-[10px] text-yellow-600 border-yellow-400">fallback</Badge>
                 )}
               </div>
               <div className="rounded-lg border bg-muted/50 p-3 font-mono text-xs space-y-1">
-                <div className="flex justify-between"><span className="text-muted-foreground">plan_id:</span><span>{sentryCtx.plan?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">plan:</span><span>{sentryCtx.plan?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">plan_id:</span><span>{livePlan?.id ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
+                <div className="flex justify-between"><span className="text-muted-foreground">plan:</span><span>{livePlan?.name ?? <span className="text-red-500 italic">(vazio)</span>}</span></div>
               </div>
             </div>
 
@@ -312,8 +332,8 @@ const DebugSentry = () => {
                 <Badge variant="outline" className="font-mono text-[10px]">app_version: {APP_VERSION}</Badge>
                 <Badge variant="outline" className="font-mono text-[10px]">app_env: {APP_ENV}</Badge>
                 <Badge variant="outline" className="font-mono text-[10px]">route: {location.pathname}</Badge>
-                {sentryCtx.tenant?.id && <Badge variant="outline" className="font-mono text-[10px]">tenant_id: {sentryCtx.tenant.id}</Badge>}
-                {sentryCtx.plan?.name && <Badge variant="outline" className="font-mono text-[10px]">plan: {sentryCtx.plan.name}</Badge>}
+                {liveTenant?.id && <Badge variant="outline" className="font-mono text-[10px]">tenant_id: {liveTenant.id}</Badge>}
+                {livePlan?.name && <Badge variant="outline" className="font-mono text-[10px]">plan: {livePlan.name}</Badge>}
               </div>
             </div>
           </CardContent>
