@@ -193,18 +193,94 @@ Quando o limite é excedido, a resposta inclui:
 
 ## 5. Auditoria e Logging
 
-### ✅ Tabela `auditoria`
+### ✅ Tabela `auditoria` (manual, legado)
 
 - ✅ Registra ações críticas (criação, atualização, deleção)
 - ✅ Captura IP, user_agent, timestamp
 - ✅ Isolamento por `empresa_id` via RLS
 
-### ⚠️ Recomendações
+### ✅ Audit Log automático (via triggers)
 
-1. **Implementar triggers automáticos**
-   - ⚠️ **Pendente**: Criar triggers para logar automaticamente ações em tabelas sensíveis
+**Implementado em:** 2026-02-22 (via Supabase MCP)
+**Migration:** `create_audit_log_system`
 
-2. **Retenção de logs**
+#### Tabela `public.audit_log`
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| `id` | uuid | PK, gerado automaticamente |
+| `created_at` | timestamptz | Timestamp do evento |
+| `empresa_id` | bigint | Inferido da linha (ou `id` para tabela `empresas`) |
+| `actor_user_id` | uuid | `auth.uid()` quando disponível |
+| `table_name` | text | Nome da tabela (TG_TABLE_NAME) |
+| `action` | text | INSERT / UPDATE / DELETE |
+| `record_id` | text | ID do registro afetado |
+| `before` | jsonb | Estado anterior (UPDATE/DELETE), **mascarado** |
+| `after` | jsonb | Estado posterior (INSERT/UPDATE), **mascarado** |
+| `context` | jsonb | Reservado para IP, user_agent, request_id |
+
+#### Tabelas cobertas por triggers automáticos
+
+| Tabela | Trigger | Campos sensíveis mascarados |
+|---|---|---|
+| `empresas` | `trg_audit_empresas` | `stripe_customer_id` |
+| `profiles` | `trg_audit_profiles` | — |
+| `api_keys` | `trg_audit_api_keys` | `key_encrypted`, `key_hash`, `plain_key` |
+| `agentes_ia` | `trg_audit_agentes_ia` | — |
+
+#### Campos mascarados automaticamente
+
+A função `public.mask_sensitive_jsonb()` substitui por `"***masked***"` qualquer campo cujo nome (case-insensitive) contenha:
+
+- `token`, `access_token`, `refresh_token`
+- `api_key`, `secret`, `password`
+- `webhook_verify_token`, `authorization`
+- `key_encrypted`, `key_hash`, `plain_key`
+- `stripe_secret`, `brevo_api_key`
+
+#### Exemplo de registro no `audit_log`
+
+```json
+{
+  "id": "a1b2c3d4-...",
+  "created_at": "2026-02-22T15:30:00Z",
+  "empresa_id": 42,
+  "actor_user_id": "uuid-do-usuario",
+  "table_name": "api_keys",
+  "action": "INSERT",
+  "record_id": "7",
+  "before": null,
+  "after": {
+    "id": 7,
+    "empresa_id": 42,
+    "provider": "openai",
+    "key_name": "Prod Key",
+    "key_encrypted": "***masked***",
+    "key_hash": "***masked***",
+    "is_active": true
+  }
+}
+```
+
+> **Privacidade:** Nenhum token, chave API, senha ou credencial é armazenado em texto claro no `audit_log`. A função `mask_sensitive_jsonb()` é executada **antes** da inserção no log.
+
+#### RLS do `audit_log`
+
+- ✅ RLS habilitado
+- ✅ Usuário autenticado: `SELECT` apenas onde `empresa_id` = empresa do usuário (via `profiles`)
+- ✅ INSERT/UPDATE/DELETE bloqueados para usuários (apenas triggers escrevem)
+- ✅ Service role: bypass total (padrão Supabase)
+
+#### Observações
+
+- Trigger usa `SECURITY DEFINER` para garantir acesso à tabela `audit_log` independente do contexto RLS
+- `auth.uid()` é capturado quando disponível (operações via client autenticado)
+- Para tabela `empresas`, `empresa_id` é inferido do próprio `id` da linha
+- Tabelas futuras (`conversations`, `messages`, `whatsapp_config`) receberão triggers quando forem criadas
+
+### ⚠️ Recomendações pendentes
+
+1. **Retenção de logs**
    - ⚠️ **Pendente**: Implementar política de retenção (ex: 90 dias)
 
 ---
@@ -219,8 +295,8 @@ Quando o limite é excedido, a resposta inclui:
 - [x] Rate limiting aplicado em todas as Edge Functions críticas
 - [x] Validação de inputs com Zod
 - [x] Auditoria de ações críticas
+- [x] Triggers automáticos de auditoria (`audit_log` com máscara de dados sensíveis)
 - [ ] Rotação de chaves de criptografia (pendente)
-- [ ] Triggers automáticos de auditoria (pendente)
 - [ ] Política de retenção de logs (pendente)
 
 ---
@@ -228,11 +304,12 @@ Quando o limite é excedido, a resposta inclui:
 ## 7. Próximos Passos
 
 1. ~~Aplicar rate limiting nas Edge Functions críticas~~ ✅ Concluído
-2. **Implementar rotação de chaves de criptografia**
-3. **Criar triggers automáticos de auditoria**
-4. **Configurar política de retenção de logs**
-5. **Migrar rate limiting para Redis (opcional, para melhor performance)**
+2. ~~Criar triggers automáticos de auditoria~~ ✅ Concluído (migration `create_audit_log_system`)
+3. **Implementar rotação de chaves de criptografia**
+4. **Configurar política de retenção de logs** (audit_log + auditoria)
+5. **Adicionar triggers em tabelas futuras** (conversations, messages, whatsapp_config)
+6. **Migrar rate limiting para Redis (opcional, para melhor performance)**
 
 ---
 
-**Conclusão**: A base de segurança está sólida. RLS está correto, dados sensíveis estão criptografados, e rate limiting está **totalmente implementado e deployado** em todas as Edge Functions críticas com estratégias de identificação por user_id, empresa_id, IP ou duplo (user_id + empresa_id) conforme o contexto de cada função.
+**Conclusão**: A base de segurança está sólida. RLS está correto, dados sensíveis estão criptografados, rate limiting está **totalmente implementado e deployado** em todas as Edge Functions críticas, e auditoria automática via triggers está ativa em 4 tabelas críticas (`empresas`, `profiles`, `api_keys`, `agentes_ia`) com máscara de campos sensíveis garantindo que nenhum token/secret é gravado em claro.
