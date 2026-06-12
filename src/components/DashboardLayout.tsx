@@ -1,8 +1,8 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, FileStack, Shield, Lightbulb, Smartphone } from "lucide-react";
+import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, Headphones, Shield, Lightbulb, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -24,75 +24,86 @@ interface SubMenuItem {
   path: string;
 }
 interface MenuItem {
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   path?: string;
   hasSubmenu?: boolean;
   badge?: string;
   submenu?: SubMenuItem[];
 }
-const menuItems: MenuItem[] = [{
-  icon: Home,
-  label: "Início",
-  path: "/dashboard"
-}, {
-  icon: Users,
-  label: "Contatos",
-  path: "/dashboard/contacts"
-}, {
-  icon: Send,
-  label: "Envio de mensagens",
-  path: "/dashboard/message-sending"
-}, {
-  icon: Megaphone,
-  label: "Anúncios",
-  path: "/dashboard/announcements"
-}, {
-  icon: MessageSquare,
-  label: "Atendimento comercial",
-  path: "/dashboard/commercial-support"
-}, {
-  icon: Headphones,
-  label: "Atendimento de suporte",
-  path: "/dashboard/customer-support"
-}, {
-  icon: Bot,
-  label: "Chatbot",
-  hasSubmenu: true,
-  submenu: [{
-    label: "Lista de chatbots",
-    path: "/dashboard/chatbots"
-  }, {
-    label: "Bases de conhecimento",
-    path: "/dashboard/knowledge-bases"
-  }, {
-    label: "Conversas",
-    path: "/dashboard/conversations"
-  }, {
-    label: "Mapa de fluxos",
-    path: "/dashboard/flow-map"
-  }, {
-    label: "Config. do Bot",
-    path: "/dashboard/bot-config"
-  }, {
-    label: "Chat Inbox",
-    path: "/dashboard/chat-inbox"
-  }]
-}, {
-  icon: Sparkles,
-  label: "Agentes especialistas",
-  path: "/dashboard/specialist-agents",
-  badge: "Beta"
-}, {
-  icon: BarChart3,
-  label: "Análises",
-  path: "/dashboard/analytics"
-}, {
-  icon: Shield,
-  label: "Admin",
-  path: "/dashboard/admin",
-  badge: "Admin"
-}];
+
+const isPathActive = (pathname: string, path: string) =>
+  pathname === path || pathname.startsWith(`${path}/`);
+
+const buildMenuItems = (isAdmin: boolean, isMaster: boolean): MenuItem[] => {
+  const items: MenuItem[] = [
+    { icon: Home, label: "Início", path: "/dashboard" },
+    { icon: Users, label: "Contatos", path: "/dashboard/contacts" },
+    { icon: Send, label: "Envio de mensagens", path: "/dashboard/message-sending" },
+    { icon: Megaphone, label: "Anúncios", path: "/dashboard/announcements" },
+    { icon: MessageSquare, label: "Atendimento comercial", path: "/dashboard/commercial-support" },
+    { icon: Headphones, label: "Atendimento de suporte", path: "/dashboard/customer-support" },
+    {
+      icon: Bot,
+      label: "Chatbot",
+      hasSubmenu: true,
+      submenu: [
+        { label: "Lista de chatbots", path: "/dashboard/chatbots" },
+        { label: "Bases de conhecimento", path: "/dashboard/knowledge-bases" },
+        { label: "Conversas", path: "/dashboard/conversations" },
+        { label: "Mapa de fluxos", path: "/dashboard/flow-map" },
+        { label: "Config. do Bot", path: "/dashboard/bot-config" },
+        { label: "Chat Inbox", path: "/dashboard/chat-inbox" },
+      ],
+    },
+    {
+      icon: Sparkles,
+      label: "Inteligência Artificial",
+      hasSubmenu: true,
+      badge: "IA",
+      submenu: [
+        { label: "Agentes de IA", path: "/dashboard/ai-agents" },
+        { label: "Contexto IA", path: "/dashboard/ia-context" },
+        { label: "Agentes especialistas", path: "/dashboard/specialist-agents" },
+      ],
+    },
+    { icon: BarChart3, label: "Análises", path: "/dashboard/analytics" },
+    {
+      icon: CreditCard,
+      label: "Conta & Planos",
+      hasSubmenu: true,
+      submenu: [
+        { label: "Planos", path: "/dashboard/pricing" },
+        { label: "Faturamento", path: "/dashboard/billing" },
+        { label: "Uso e limites", path: "/dashboard/usage" },
+      ],
+    },
+  ];
+
+  if (isAdmin || isMaster) {
+    const adminSubmenu: SubMenuItem[] = [
+      { label: "Dashboard Admin", path: "/dashboard/admin-dashboard" },
+      { label: "Equipe", path: "/dashboard/team" },
+      { label: "API Keys", path: "/dashboard/api-keys" },
+      { label: "Organização", path: "/dashboard/organization-settings" },
+      { label: "Gestão de usuários", path: "/dashboard/admin" },
+    ];
+
+    if (isMaster) {
+      adminSubmenu.unshift({ label: "Master", path: "/dashboard/master" });
+    }
+
+    items.push({
+      icon: Shield,
+      label: "Admin",
+      hasSubmenu: true,
+      badge: "Admin",
+      submenu: adminSubmenu,
+    });
+  }
+
+  return items;
+};
 
 const DashboardLayout = ({
   children
@@ -100,21 +111,27 @@ const DashboardLayout = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { signOut, profile: authProfile } = useAuth();
   const { profile } = useDashboardData();
+  const isAdmin = authProfile?.role === "admin" || authProfile?.role === "master";
+  const isMaster = authProfile?.role === "master";
+  const menuItems = useMemo(() => buildMenuItems(isAdmin, isMaster), [isAdmin, isMaster]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [openMenus, setOpenMenus] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleFiles = () => {
-    toast({
-      title: "Arquivos",
-      description: "Gerenciador de arquivos será aberto em breve.",
+  useEffect(() => {
+    const expanded: Record<string, boolean> = {};
+    menuItems.forEach((item) => {
+      if (item.hasSubmenu && item.submenu?.some((sub) => isPathActive(location.pathname, sub.path))) {
+        expanded[item.label] = true;
+      }
     });
-  };
+    if (Object.keys(expanded).length > 0) {
+      setOpenMenus((prev) => ({ ...prev, ...expanded }));
+    }
+  }, [location.pathname, menuItems]);
 
   const handleProfile = () => {
     navigate("/dashboard/settings");
@@ -189,7 +206,9 @@ const DashboardLayout = ({
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto" aria-label="Navegação do dashboard">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.path && location.pathname === item.path;
+            const isActive = item.path
+              ? isPathActive(location.pathname, item.path)
+              : item.submenu?.some((sub) => isPathActive(location.pathname, sub.path));
             const isOpen = openMenus[item.label];
             const showExpanded = isExpanded || isMobileMenuOpen;
 
@@ -224,7 +243,7 @@ const DashboardLayout = ({
                   {showExpanded && (
                     <CollapsibleContent className="space-y-1" id={`submenu-${item.label}`}>
                       {item.submenu.map(subItem => {
-                        const isSubActive = location.pathname === subItem.path;
+                        const isSubActive = isPathActive(location.pathname, subItem.path);
                         return (
                           <Link 
                             key={subItem.path} 
@@ -305,10 +324,10 @@ const DashboardLayout = ({
         {/* Settings at bottom */}
         <div className="border-t border-border">
           <Link 
-            to="/dashboard/organization-settings" 
+            to="/dashboard/settings" 
             className={cn(
               "flex items-center gap-3 px-3 py-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-              location.pathname === "/dashboard/organization-settings" 
+              isPathActive(location.pathname, "/dashboard/settings")
                 ? "text-primary font-medium" 
                 : "text-muted-foreground hover:text-foreground"
             )}
@@ -424,6 +443,7 @@ const DashboardLayout = ({
                     variant="ghost" 
                     className="relative h-10 w-10 rounded-full hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
                     aria-label="Menu do usuário"
+                    data-testid="user-menu"
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary text-primary-foreground">
