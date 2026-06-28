@@ -76,7 +76,7 @@ const ChatAssistant = ({ isOpen, onClose }: ChatAssistantProps) => {
   return (
     <Card className="fixed bottom-6 right-6 w-[400px] shadow-2xl z-50 overflow-hidden">
       {/* Header */}
-      <div className="bg-[#1a1a1a] text-white p-4 flex items-center justify-between">
+      <div className="bg-[hsl(250_50%_10%)] text-white p-4 flex items-center justify-between border-b border-white/10">
         <div className="flex items-center gap-2">
           <img src={nuviaIcon} alt="Nuvia" className="h-6 w-6" />
           <span className="font-semibold">Assistente Nuvia</span>
@@ -100,7 +100,7 @@ const ChatAssistant = ({ isOpen, onClose }: ChatAssistantProps) => {
           </Button>
         </div>
       </div>
-      <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" />
+      <div className="h-1 bg-gradient-to-r from-primary to-accent" />
 
       {!isMinimized && (
         <>

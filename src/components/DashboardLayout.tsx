@@ -8,6 +8,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
+import nuviaLogo from "@/assets/nuvia-logo-transparent.png";
+
+/** Shell visual Nuvia (Landing + index.css) — não usar tokens Zenvia (#1a1a1a) */
+const NUvia_HEADER = "bg-[hsl(250_50%_10%)] border-b border-white/10";
+const NUvia_GRADIENT = "h-1 bg-gradient-to-r from-primary to-accent";
+const NUvia_HEADER_BTN =
+  "text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(250_50%_10%)]";
+const menuItemActive =
+  "bg-sidebar-accent text-sidebar-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r";
+const menuItemIdle =
+  "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
 import { APP_VERSION } from "@/config/release";
 import ChatAssistant from "./ChatAssistant";
 import HelpDropdown from "./HelpDropdown";
@@ -171,11 +182,9 @@ const DashboardLayout = ({
       {/* Sidebar - Fixed */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 h-screen bg-background flex flex-col transition-all duration-300 ease-in-out z-40",
-          // Desktop behavior
+          "fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out z-40 shadow-sm",
           "hidden md:flex",
           isExpanded ? "md:w-64" : "md:w-16",
-          // Mobile behavior
           isMobileMenuOpen && "flex w-64 md:hidden"
         )} 
         onMouseEnter={() => setIsExpanded(true)} 
@@ -183,24 +192,24 @@ const DashboardLayout = ({
         role="navigation"
         aria-label="Menu principal"
       >
-        {/* Logo Area - Dark */}
-        <div className="bg-[#1a1a1a] h-16 flex items-center px-4 border-b border-gray-800">
-          <Link to="/dashboard" className="flex items-center gap-2">
+        <div className={cn(NUvia_HEADER, "h-16 flex items-center px-3 text-white shrink-0")}>
+          <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
             <img 
               src={nuviaIcon} 
               alt="Nuvia Customer Cloud - Voltar para início" 
-              className="h-12 w-12 shrink-0" 
+              className="h-10 w-10 shrink-0" 
             />
             {(isExpanded || isMobileMenuOpen) && (
-              <span className="text-white font-semibold tracking-wide whitespace-nowrap">
-                Nuvia
-              </span>
+              <img
+                src={nuviaLogo}
+                alt="Nuvia Customer Cloud"
+                className="h-8 w-auto max-w-[140px] object-contain"
+              />
             )}
           </Link>
         </div>
 
-        {/* Gradient Bar */}
-        <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" aria-hidden="true" />
+        <div className={NUvia_GRADIENT} aria-hidden="true" />
 
         {/* Menu */}
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto" aria-label="Navegação do dashboard">
@@ -219,9 +228,7 @@ const DashboardLayout = ({
                     <button 
                       className={cn(
                         "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                        isActive 
-                          ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        isActive ? menuItemActive : menuItemIdle
                       )}
                       aria-expanded={isOpen}
                       aria-controls={`submenu-${item.label}`}
@@ -231,7 +238,7 @@ const DashboardLayout = ({
                         <>
                           <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
                           {item.badge && (
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                               {item.badge}
                             </span>
                           )}
@@ -250,9 +257,9 @@ const DashboardLayout = ({
                             to={subItem.path} 
                             className={cn(
                               "flex items-center gap-3 rounded-md pl-12 pr-3 py-2 text-sm transition-all relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                              isSubActive 
-                                ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-6 before:bg-primary before:rounded-r" 
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              isSubActive
+                                ? "bg-sidebar-accent text-sidebar-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-6 before:bg-primary before:rounded-r"
+                                : menuItemIdle
                             )}
                             onClick={() => setIsMobileMenuOpen(false)}
                           >
@@ -272,9 +279,7 @@ const DashboardLayout = ({
                   key={item.label} 
                   className={cn(
                     "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                    isActive 
-                      ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    isActive ? menuItemActive : menuItemIdle
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -282,7 +287,7 @@ const DashboardLayout = ({
                     <>
                       <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
                       {item.badge && (
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                           {item.badge}
                         </span>
                       )}
@@ -299,9 +304,7 @@ const DashboardLayout = ({
                 to={item.path!} 
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                  isActive 
-                    ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  isActive ? menuItemActive : menuItemIdle
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -310,7 +313,7 @@ const DashboardLayout = ({
                   <>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                         {item.badge}
                       </span>
                     )}
@@ -322,14 +325,14 @@ const DashboardLayout = ({
         </nav>
 
         {/* Settings at bottom */}
-        <div className="border-t border-border">
+        <div className="border-t border-sidebar-border">
           <Link 
             to="/dashboard/settings" 
             className={cn(
-              "flex items-center gap-3 px-3 py-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
+              "flex items-center gap-3 px-3 py-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2", 
               isPathActive(location.pathname, "/dashboard/settings")
-                ? "text-primary font-medium" 
-                : "text-muted-foreground hover:text-foreground"
+                ? "text-sidebar-primary font-medium bg-sidebar-accent" 
+                : menuItemIdle
             )}
             onClick={() => setIsMobileMenuOpen(false)}
           >
@@ -346,12 +349,12 @@ const DashboardLayout = ({
         isExpanded && "md:ml-64"
       )}>
         {/* Dark Header with Gradient - Fixed */}
-        <header className="sticky top-0 z-50 bg-[#1a1a1a] border-b border-gray-800">
+        <header className={cn("sticky top-0 z-50 text-white", NUvia_HEADER)}>
           <div className="h-16 flex items-center justify-between px-4 md:px-6">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="md:hidden text-white hover:bg-white/10"
+              className={cn("md:hidden", NUvia_HEADER_BTN)}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={isMobileMenuOpen}
@@ -368,7 +371,7 @@ const DashboardLayout = ({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]" 
+                      className={NUvia_HEADER_BTN}
                       onClick={() => setIsChatOpen(!isChatOpen)}
                       aria-label="Abrir assistente virtual"
                     >
@@ -392,7 +395,7 @@ const DashboardLayout = ({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                      className={NUvia_HEADER_BTN}
                       onClick={() => navigate("/dashboard/suggestions")}
                       aria-label="Abrir caixa de sugestões"
                     >
@@ -410,7 +413,7 @@ const DashboardLayout = ({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="text-white hover:bg-white/10 gap-2 hidden sm:flex focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                    className={cn(NUvia_HEADER_BTN, "gap-2 hidden sm:flex")}
                     aria-label="Selecionar organização"
                   >
                     <div className="text-left">
@@ -441,7 +444,7 @@ const DashboardLayout = ({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="relative h-10 w-10 rounded-full hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                    className={cn("relative h-10 w-10 rounded-full", NUvia_HEADER_BTN)}
                     aria-label="Menu do usuário"
                     data-testid="user-menu"
                   >
@@ -477,7 +480,7 @@ const DashboardLayout = ({
             </div>
           </div>
           {/* Gradient Bar */}
-          <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" aria-hidden="true" />
+          <div className={NUvia_GRADIENT} aria-hidden="true" />
         </header>
 
         {/* Page content */}

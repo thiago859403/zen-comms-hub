@@ -1,11 +1,11 @@
 # =============================================================================
 # Supabase Local Config — Nuvia Customer Cloud
 # =============================================================================
-# Project ref: zlqpgxvmiqadavimqtns (sa-east-1)
+# Project ref: dztevycwxlnrrvnvutyc (sa-east-1)
 # Este arquivo configura o Supabase CLI para deploy de Edge Functions.
 # =============================================================================
 
-project_id = "zlqpgxvmiqadavimqtns"
+project_id = "dztevycwxlnrrvnvutyc"
 
 # --- Edge Functions ---
 # verify_jwt = true  → requer Authorization header (JWT) do frontend

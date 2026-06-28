@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Suspense, lazy } from "react";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
@@ -24,10 +24,7 @@ const DebugSentry = lazy(() => import("./pages/DebugSentry"));
 
 // Páginas protegidas (lazy loading)
 const Dashboard = lazy(() => import("./pages/Dashboard"));
-const Campaigns = lazy(() => import("./pages/Campaigns"));
 const Contacts = lazy(() => import("./pages/Contacts"));
-const Chats = lazy(() => import("./pages/Chats"));
-const Templates = lazy(() => import("./pages/Templates"));
 const Settings = lazy(() => import("./pages/Settings"));
 const Admin = lazy(() => import("./pages/Admin"));
 const MessageSending = lazy(() => import("./pages/MessageSending"));
@@ -113,16 +110,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/dashboard/campaigns"
-            element={
-              <ProtectedRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <Campaigns />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
+          {/* Rotas legadas Lovable → canônicas (Épico 2+) */}
+          <Route path="/dashboard/campaigns" element={<Navigate to="/dashboard/message-sending" replace />} />
           <Route
             path="/dashboard/contacts"
             element={
@@ -133,26 +122,8 @@ const App = () => {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/dashboard/chats"
-            element={
-              <ProtectedRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <Chats />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/dashboard/templates"
-            element={
-              <ProtectedRoute>
-                <Suspense fallback={<PageLoader />}>
-                  <Templates />
-                </Suspense>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard/chats" element={<Navigate to="/dashboard/chat-inbox" replace />} />
+          <Route path="/dashboard/templates" element={<Navigate to="/dashboard/announcements" replace />} />
           <Route
             path="/dashboard/settings"
             element={
@@ -329,7 +300,7 @@ const App = () => {
           <Route
             path="/dashboard/api-keys"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <ApiKeys />
                 </Suspense>
@@ -339,7 +310,7 @@ const App = () => {
           <Route
             path="/dashboard/team"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireAdmin>
                 <Suspense fallback={<PageLoader />}>
                   <TeamManagement />
                 </Suspense>
@@ -394,7 +365,7 @@ const App = () => {
           <Route
             path="/dashboard/master"
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requireMaster>
                 <Suspense fallback={<PageLoader />}>
                   <MasterDashboard />
                 </Suspense>
