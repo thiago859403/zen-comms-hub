@@ -24,7 +24,7 @@ jobs:
     timeout-minutes: 10
 
     env:
-      SUPABASE_PROJECT_REF: zlqpgxvmiqadavimqtns
+      SUPABASE_PROJECT_REF: dztevycwxlnrrvnvutyc
 
     steps:
       - name: Checkout
