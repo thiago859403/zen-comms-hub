@@ -1,25 +1,16 @@
 import { defineConfig, devices } from '@playwright/test';
 
-/**
- * Configuração do Playwright para testes E2E
- * 
- * Configurações:
- * - Testes em múltiplos navegadores (Chromium, Firefox, WebKit)
- * - Timeout padrão de 30s
- * - Screenshots e vídeos em caso de falha
- * - Base URL configurável via variável de ambiente
- */
-
 const isCI = !!process.env.CI;
 
 export default defineConfig({
   testDir: './tests/e2e',
-  fullyParallel: true,
+  testMatch: '**/*.spec.ts',
+  fullyParallel: !isCI,
   forbidOnly: isCI,
-  retries: isCI ? 2 : 0,
-  workers: isCI ? 2 : undefined,
-  reporter: 'html',
-  timeout: 60_000,
+  retries: isCI ? 1 : 0,
+  workers: isCI ? 1 : undefined,
+  reporter: isCI ? [['line'], ['html', { open: 'never' }]] : 'html',
+  timeout: 90_000,
   expect: { timeout: 15_000 },
 
   use: {
@@ -27,6 +18,7 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
+    actionTimeout: 20_000,
   },
 
   projects: [
@@ -34,7 +26,6 @@ export default defineConfig({
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
     },
-    // Firefox e WebKit apenas local — CI roda só chromium via --project flag
     ...(!isCI
       ? [
           {
@@ -49,13 +40,12 @@ export default defineConfig({
       : []),
   ],
 
-  // Em CI o workflow sobe o preview server; local usa build+preview na mesma porta
   webServer: isCI
     ? undefined
     : {
         command: 'pnpm build && pnpm preview --host 127.0.0.1 --port 4173',
         url: 'http://127.0.0.1:4173',
         reuseExistingServer: true,
-        timeout: 120_000,
+        timeout: 180_000,
       },
 });
