@@ -1,0 +1,7 @@
+# Monorepo de pacote único — campo packages é obrigatório no pnpm 9+ em CI
+packages:
+  - '.'
+
+allowBuilds:
+  '@swc/core': true
+  esbuild: true

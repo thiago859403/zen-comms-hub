@@ -256,7 +256,7 @@ const Dashboard = () => {
                 Atualizado em: {planInfo.lastUpdated}
               </p>
             </div>
-            <Button variant="link" className="mt-4 p-0 h-auto">
+            <Button variant="link" className="mt-4 p-0 h-auto" onClick={() => navigate("/dashboard/usage")}>
               Relatório de consumo
             </Button>
           </Card>
@@ -309,7 +309,7 @@ const Dashboard = () => {
             <Button
               variant="outline"
               className="h-auto py-6 flex-col gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              onClick={() => navigate("/dashboard/chats")}
+              onClick={() => navigate("/dashboard/chat-inbox")}
               aria-label="Ir para atender clientes"
             >
               <MessageSquare className="h-6 w-6" aria-hidden="true" />
@@ -327,7 +327,7 @@ const Dashboard = () => {
             <Button
               variant="outline"
               className="h-auto py-6 flex-col gap-2 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-              onClick={() => navigate("/dashboard/settings")}
+              onClick={() => navigate("/dashboard/billing")}
               aria-label="Ir para ver faturas"
             >
               <FileText className="h-6 w-6" aria-hidden="true" />

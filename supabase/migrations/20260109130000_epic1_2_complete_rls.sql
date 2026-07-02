@@ -186,7 +186,7 @@ CREATE POLICY "Empresa admins can update empresa profiles"
     public.is_empresa_admin(empresa_id)
     AND empresa_id = public.current_empresa_id()
     -- Não permitir mudar para master
-    AND NEW.role != 'master'
+    AND role != 'master'
   );
 
 -- Master admins podem inserir perfis
@@ -200,9 +200,9 @@ CREATE POLICY "Empresa admins can insert empresa profiles"
   ON public.profiles FOR INSERT
   TO authenticated
   WITH CHECK (
-    public.is_empresa_admin(NEW.empresa_id)
-    AND NEW.empresa_id = public.current_empresa_id()
-    AND NEW.role != 'master'
+    public.is_empresa_admin(empresa_id)
+    AND empresa_id = public.current_empresa_id()
+    AND role != 'master'
   );
 
 -- Master admins podem deletar perfis

@@ -27,7 +27,7 @@ if (import.meta.env.DEV) {
     key: SUPABASE_KEY ? `✓ Definido (${SUPABASE_KEY.substring(0, 30)}...)` : '✗ Não definido',
     keyLength: SUPABASE_KEY?.length || 0,
     keyType: SUPABASE_KEY?.startsWith('sb_publishable_') ? 'Publishable' : SUPABASE_KEY?.startsWith('eyJ') ? 'Anon (JWT)' : 'Desconhecido',
-    urlMatch: SUPABASE_URL?.includes('zlqpgxvmiqadavimqtns') ? '✓ URL correta' : '✗ URL incorreta',
+    urlMatch: SUPABASE_URL?.includes('dztevycwxlnrrvnvutyc') ? '✓ URL correta' : '✗ URL incorreta',
     publishableKey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ? '✓ Presente' : '✗ Ausente',
     anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓ Presente' : '✗ Ausente',
     usingKey: import.meta.env.VITE_SUPABASE_ANON_KEY ? 'ANON_KEY' : 'PUBLISHABLE_KEY',

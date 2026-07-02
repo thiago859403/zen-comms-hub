@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "13.0.5"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -41,6 +41,39 @@ export type Database = {
           id?: string
           ip_address?: string | null
           target_user_id?: string | null
+        }
+        Relationships: []
+      }
+      agentes_ia: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          empresa_id: number
+          id: number
+          instrucoes: string
+          nome: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          empresa_id: number
+          id?: number
+          instrucoes: string
+          nome: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          empresa_id?: number
+          id?: number
+          instrucoes?: string
+          nome?: string
+          status?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -84,6 +117,112 @@ export type Database = {
             columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      api_keys: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          empresa_id: number
+          id: number
+          is_active: boolean | null
+          is_default: boolean | null
+          key_encrypted: string
+          key_hash: string
+          key_name: string
+          last_used_at: string | null
+          metadata: Json | null
+          provider: string
+          updated_at: string | null
+          usage_count: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          empresa_id: number
+          id?: number
+          is_active?: boolean | null
+          is_default?: boolean | null
+          key_encrypted: string
+          key_hash: string
+          key_name: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          provider: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          empresa_id?: number
+          id?: number
+          is_active?: boolean | null
+          is_default?: boolean | null
+          key_encrypted?: string
+          key_hash?: string
+          key_name?: string
+          last_used_at?: string | null
+          metadata?: Json | null
+          provider?: string
+          updated_at?: string | null
+          usage_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "api_keys_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      auditoria: {
+        Row: {
+          acao: string
+          created_at: string | null
+          empresa_id: number | null
+          entidade_id: number | null
+          entidade_tipo: string
+          id: number
+          ip_address: unknown
+          metadata: Json | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          acao: string
+          created_at?: string | null
+          empresa_id?: number | null
+          entidade_id?: number | null
+          entidade_tipo: string
+          id?: number
+          ip_address?: unknown
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          acao?: string
+          created_at?: string | null
+          empresa_id?: number | null
+          entidade_id?: number | null
+          entidade_tipo?: string
+          id?: number
+          ip_address?: unknown
+          metadata?: Json | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auditoria_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
         ]
@@ -380,62 +519,104 @@ export type Database = {
       }
       conversations: {
         Row: {
+          agente_id: number | null
+          api_key_id: number | null
           assigned_agent_id: string | null
           contact_email: string | null
           contact_name: string
           contact_phone: string
+          conversation_uuid: string | null
           created_at: string | null
+          empresa_id: number | null
           first_response_at: string | null
           id: string
           last_message_at: string | null
+          mensagens: Json | null
           metadata: Json | null
           priority: string | null
           queue_id: string | null
           resolved_at: string | null
           sla_breach: boolean | null
           status: string | null
+          tokens_usados: number | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
+          agente_id?: number | null
+          api_key_id?: number | null
           assigned_agent_id?: string | null
           contact_email?: string | null
           contact_name: string
           contact_phone: string
+          conversation_uuid?: string | null
           created_at?: string | null
+          empresa_id?: number | null
           first_response_at?: string | null
           id?: string
           last_message_at?: string | null
+          mensagens?: Json | null
           metadata?: Json | null
           priority?: string | null
           queue_id?: string | null
           resolved_at?: string | null
           sla_breach?: boolean | null
           status?: string | null
+          tokens_usados?: number | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
+          agente_id?: number | null
+          api_key_id?: number | null
           assigned_agent_id?: string | null
           contact_email?: string | null
           contact_name?: string
           contact_phone?: string
+          conversation_uuid?: string | null
           created_at?: string | null
+          empresa_id?: number | null
           first_response_at?: string | null
           id?: string
           last_message_at?: string | null
+          mensagens?: Json | null
           metadata?: Json | null
           priority?: string | null
           queue_id?: string | null
           resolved_at?: string | null
           sla_breach?: boolean | null
           status?: string | null
+          tokens_usados?: number | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "conversations_agente_id_fkey"
+            columns: ["agente_id"]
+            isOneToOne: false
+            referencedRelation: "agentes_ia"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_api_key_id_fkey"
+            columns: ["api_key_id"]
+            isOneToOne: false
+            referencedRelation: "api_keys"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "conversations_assigned_agent_id_fkey"
             columns: ["assigned_agent_id"]
             isOneToOne: false
             referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
             referencedColumns: ["id"]
           },
           {
@@ -446,6 +627,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      empresas: {
+        Row: {
+          contexto_ia: Json | null
+          created_at: string | null
+          id: number
+          is_active: boolean | null
+          nome: string
+          plano_id: number | null
+          status: string | null
+          stripe_customer_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          contexto_ia?: Json | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          nome: string
+          plano_id?: number | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          contexto_ia?: Json | null
+          created_at?: string | null
+          id?: number
+          is_active?: boolean | null
+          nome?: string
+          plano_id?: number | null
+          status?: string | null
+          stripe_customer_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       flow_executions: {
         Row: {
@@ -577,6 +794,29 @@ export type Database = {
           },
         ]
       }
+      org_to_empresa_mapping: {
+        Row: {
+          empresa_id: number
+          org_id: string
+        }
+        Insert: {
+          empresa_id: number
+          org_id: string
+        }
+        Update: {
+          empresa_id?: number
+          org_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_to_empresa_mapping_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           created_at: string | null
@@ -607,11 +847,58 @@ export type Database = {
         }
         Relationships: []
       }
+      planos: {
+        Row: {
+          cor: string | null
+          created_at: string | null
+          features: Json | null
+          id: number
+          is_active: boolean | null
+          limite_mensagens_mes: number
+          max_agentes: number
+          max_usuarios: number
+          nome: string
+          preco_mensal: number
+          stripe_price_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string | null
+          features?: Json | null
+          id?: number
+          is_active?: boolean | null
+          limite_mensagens_mes?: number
+          max_agentes?: number
+          max_usuarios?: number
+          nome: string
+          preco_mensal?: number
+          stripe_price_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string | null
+          features?: Json | null
+          id?: number
+          is_active?: boolean | null
+          limite_mensagens_mes?: number
+          max_agentes?: number
+          max_usuarios?: number
+          nome?: string
+          preco_mensal?: number
+          stripe_price_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
+          avatar_url: string | null
           company: string | null
           created_at: string | null
           email: string
+          empresa_id: number | null
           failed_login_attempts: number | null
           full_name: string | null
           id: string
@@ -619,13 +906,16 @@ export type Database = {
           locked_until: string | null
           org_id: string
           plan: string | null
+          role: string | null
           status: string | null
           updated_at: string | null
         }
         Insert: {
+          avatar_url?: string | null
           company?: string | null
           created_at?: string | null
           email: string
+          empresa_id?: number | null
           failed_login_attempts?: number | null
           full_name?: string | null
           id: string
@@ -633,13 +923,16 @@ export type Database = {
           locked_until?: string | null
           org_id: string
           plan?: string | null
+          role?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Update: {
+          avatar_url?: string | null
           company?: string | null
           created_at?: string | null
           email?: string
+          empresa_id?: number | null
           failed_login_attempts?: number | null
           full_name?: string | null
           id?: string
@@ -647,10 +940,18 @@ export type Database = {
           locked_until?: string | null
           org_id?: string
           plan?: string | null
+          role?: string | null
           status?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "empresas"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_org_id_fkey"
             columns: ["org_id"]
@@ -774,6 +1075,36 @@ export type Database = {
         }
         Relationships: []
       }
+      uso_recursos: {
+        Row: {
+          created_at: string | null
+          empresa_id: number
+          id: number
+          mensagens_enviadas: number
+          mes_referencia: string
+          tokens_consumidos: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          empresa_id: number
+          id?: number
+          mensagens_enviadas?: number
+          mes_referencia: string
+          tokens_consumidos?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          empresa_id?: number
+          id?: number
+          mensagens_enviadas?: number
+          mes_referencia?: string
+          tokens_consumidos?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_config: {
         Row: {
           access_token: string | null
@@ -824,7 +1155,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_api_key: {
+        Args: { p_key_id: number; p_user_id: string }
+        Returns: boolean
+      }
+      current_empresa_id: { Args: never; Returns: number }
       current_org_id: { Args: never; Returns: string }
+      decrypt_api_key: {
+        Args: { p_empresa_id: number; p_encrypted_key: string }
+        Returns: string
+      }
+      encrypt_api_key: {
+        Args: { p_empresa_id: number; p_plain_key: string }
+        Returns: string
+      }
+      ensure_empresa_context: {
+        Args: { p_empresa_id: number }
+        Returns: boolean
+      }
+      ensure_uso_recursos_current_month: {
+        Args: { p_empresa_id: number }
+        Returns: undefined
+      }
+      generate_encryption_key: {
+        Args: { p_empresa_id: number }
+        Returns: string
+      }
+      get_decrypted_api_key: {
+        Args: { p_empresa_id: number; p_key_id: number }
+        Returns: string
+      }
+      get_default_decrypted_api_key: {
+        Args: { p_empresa_id: number; p_provider: string }
+        Returns: string
+      }
+      get_empresa_id_for_user: { Args: { p_user_id: string }; Returns: number }
+      get_empresa_id_from_conversation: {
+        Args: { p_conversation_id: string }
+        Returns: number
+      }
+      get_empresa_id_from_profile: {
+        Args: { p_profile_id: string }
+        Returns: number
+      }
+      get_or_create_uso_recursos_current_month: {
+        Args: { p_empresa_id: number }
+        Returns: number
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -832,9 +1209,56 @@ export type Database = {
         }
         Returns: boolean
       }
+      hash_api_key: { Args: { p_plain_key: string }; Returns: string }
+      increment_uso_recursos: {
+        Args: { p_empresa_id: number; p_mensagens?: number; p_tokens?: number }
+        Returns: undefined
+      }
+      insert_api_key: {
+        Args: {
+          p_created_by?: string
+          p_empresa_id: number
+          p_is_default?: boolean
+          p_key_name: string
+          p_metadata?: Json
+          p_plain_key: string
+          p_provider: string
+        }
+        Returns: number
+      }
+      is_empresa_admin: { Args: { p_empresa_id: number }; Returns: boolean }
+      is_master_admin:
+        | { Args: never; Returns: boolean }
+        | { Args: { user_id: string }; Returns: boolean }
+      is_user_admin_of_empresa: {
+        Args: { _empresa_id: number; _user_id: string }
+        Returns: boolean
+      }
+      is_user_admin_or_master: { Args: { _user_id: string }; Returns: boolean }
+      log_auditoria: {
+        Args: {
+          p_acao: string
+          p_empresa_id: number
+          p_entidade_id?: number
+          p_entidade_tipo: string
+          p_ip_address?: unknown
+          p_metadata?: Json
+          p_user_agent?: string
+          p_user_id: string
+        }
+        Returns: number
+      }
+      user_belongs_to_empresa: {
+        Args: { p_empresa_id: number; p_user_id: string }
+        Returns: boolean
+      }
+      validate_empresa_access: {
+        Args: { p_empresa_id: number }
+        Returns: boolean
+      }
     }
     Enums: {
-      app_role: "admin" | "user"
+      app_role: "admin" | "user" | "master"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -962,7 +1386,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "user"],
+      app_role: ["admin", "user", "master"],
     },
   },
 } as const

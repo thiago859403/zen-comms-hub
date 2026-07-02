@@ -21,10 +21,13 @@ CREATE TABLE IF NOT EXISTS public.api_keys (
   usage_count BIGINT DEFAULT 0,
   metadata JSONB DEFAULT '{}'::jsonb, -- Informações adicionais (modelo preferido, etc.)
   created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  -- Garantir que apenas uma chave padrão por empresa/provider
-  CONSTRAINT unique_default_key_per_empresa_provider UNIQUE (empresa_id, provider, is_default) WHERE is_default = true
+  updated_at TIMESTAMPTZ DEFAULT now()
 );
+
+-- Garantir que apenas uma chave padrão por empresa/provider
+CREATE UNIQUE INDEX IF NOT EXISTS unique_default_key_per_empresa_provider
+  ON public.api_keys (empresa_id, provider)
+  WHERE is_default = true;
 
 -- Criar índices
 CREATE INDEX IF NOT EXISTS idx_api_keys_empresa_id ON public.api_keys(empresa_id);

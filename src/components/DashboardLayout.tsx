@@ -1,13 +1,24 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
-import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, FileText, MessageCircle, GitBranch, Headphones, FileStack, Shield, Lightbulb, Smartphone } from "lucide-react";
+import { MessageSquare, Users, Send, Settings, Menu, Home, BarChart3, Megaphone, ChevronDown, ChevronRight, Bot, Sparkles, Headphones, Shield, Lightbulb, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import nuviaIcon from "@/assets/nuvia-icon-transparent.png";
+import nuviaLogo from "@/assets/nuvia-logo-transparent.png";
+
+/** Shell visual Nuvia (Landing + index.css) — não usar tokens Zenvia (#1a1a1a) */
+const NUvia_HEADER = "bg-[hsl(250_50%_10%)] border-b border-white/10";
+const NUvia_GRADIENT = "h-1 bg-gradient-to-r from-primary to-accent";
+const NUvia_HEADER_BTN =
+  "text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(250_50%_10%)]";
+const menuItemActive =
+  "bg-sidebar-accent text-sidebar-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r";
+const menuItemIdle =
+  "text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
 import { APP_VERSION } from "@/config/release";
 import ChatAssistant from "./ChatAssistant";
 import HelpDropdown from "./HelpDropdown";
@@ -24,75 +35,86 @@ interface SubMenuItem {
   path: string;
 }
 interface MenuItem {
-  icon: any;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   path?: string;
   hasSubmenu?: boolean;
   badge?: string;
   submenu?: SubMenuItem[];
 }
-const menuItems: MenuItem[] = [{
-  icon: Home,
-  label: "Início",
-  path: "/dashboard"
-}, {
-  icon: Users,
-  label: "Contatos",
-  path: "/dashboard/contacts"
-}, {
-  icon: Send,
-  label: "Envio de mensagens",
-  path: "/dashboard/message-sending"
-}, {
-  icon: Megaphone,
-  label: "Anúncios",
-  path: "/dashboard/announcements"
-}, {
-  icon: MessageSquare,
-  label: "Atendimento comercial",
-  path: "/dashboard/commercial-support"
-}, {
-  icon: Headphones,
-  label: "Atendimento de suporte",
-  path: "/dashboard/customer-support"
-}, {
-  icon: Bot,
-  label: "Chatbot",
-  hasSubmenu: true,
-  submenu: [{
-    label: "Lista de chatbots",
-    path: "/dashboard/chatbots"
-  }, {
-    label: "Bases de conhecimento",
-    path: "/dashboard/knowledge-bases"
-  }, {
-    label: "Conversas",
-    path: "/dashboard/conversations"
-  }, {
-    label: "Mapa de fluxos",
-    path: "/dashboard/flow-map"
-  }, {
-    label: "Config. do Bot",
-    path: "/dashboard/bot-config"
-  }, {
-    label: "Chat Inbox",
-    path: "/dashboard/chat-inbox"
-  }]
-}, {
-  icon: Sparkles,
-  label: "Agentes especialistas",
-  path: "/dashboard/specialist-agents",
-  badge: "Beta"
-}, {
-  icon: BarChart3,
-  label: "Análises",
-  path: "/dashboard/analytics"
-}, {
-  icon: Shield,
-  label: "Admin",
-  path: "/dashboard/admin",
-  badge: "Admin"
-}];
+
+const isPathActive = (pathname: string, path: string) =>
+  pathname === path || pathname.startsWith(`${path}/`);
+
+const buildMenuItems = (isAdmin: boolean, isMaster: boolean): MenuItem[] => {
+  const items: MenuItem[] = [
+    { icon: Home, label: "Início", path: "/dashboard" },
+    { icon: Users, label: "Contatos", path: "/dashboard/contacts" },
+    { icon: Send, label: "Envio de mensagens", path: "/dashboard/message-sending" },
+    { icon: Megaphone, label: "Anúncios", path: "/dashboard/announcements" },
+    { icon: MessageSquare, label: "Atendimento comercial", path: "/dashboard/commercial-support" },
+    { icon: Headphones, label: "Atendimento de suporte", path: "/dashboard/customer-support" },
+    {
+      icon: Bot,
+      label: "Chatbot",
+      hasSubmenu: true,
+      submenu: [
+        { label: "Lista de chatbots", path: "/dashboard/chatbots" },
+        { label: "Bases de conhecimento", path: "/dashboard/knowledge-bases" },
+        { label: "Conversas", path: "/dashboard/conversations" },
+        { label: "Mapa de fluxos", path: "/dashboard/flow-map" },
+        { label: "Config. do Bot", path: "/dashboard/bot-config" },
+        { label: "Chat Inbox", path: "/dashboard/chat-inbox" },
+      ],
+    },
+    {
+      icon: Sparkles,
+      label: "Inteligência Artificial",
+      hasSubmenu: true,
+      badge: "IA",
+      submenu: [
+        { label: "Agentes de IA", path: "/dashboard/ai-agents" },
+        { label: "Contexto IA", path: "/dashboard/ia-context" },
+        { label: "Agentes especialistas", path: "/dashboard/specialist-agents" },
+      ],
+    },
+    { icon: BarChart3, label: "Análises", path: "/dashboard/analytics" },
+    {
+      icon: CreditCard,
+      label: "Conta & Planos",
+      hasSubmenu: true,
+      submenu: [
+        { label: "Planos", path: "/dashboard/pricing" },
+        { label: "Faturamento", path: "/dashboard/billing" },
+        { label: "Uso e limites", path: "/dashboard/usage" },
+      ],
+    },
+  ];
+
+  if (isAdmin || isMaster) {
+    const adminSubmenu: SubMenuItem[] = [
+      { label: "Dashboard Admin", path: "/dashboard/admin-dashboard" },
+      { label: "Equipe", path: "/dashboard/team" },
+      { label: "API Keys", path: "/dashboard/api-keys" },
+      { label: "Organização", path: "/dashboard/organization-settings" },
+      { label: "Gestão de usuários", path: "/dashboard/admin" },
+    ];
+
+    if (isMaster) {
+      adminSubmenu.unshift({ label: "Master", path: "/dashboard/master" });
+    }
+
+    items.push({
+      icon: Shield,
+      label: "Admin",
+      hasSubmenu: true,
+      badge: "Admin",
+      submenu: adminSubmenu,
+    });
+  }
+
+  return items;
+};
 
 const DashboardLayout = ({
   children
@@ -100,21 +122,27 @@ const DashboardLayout = ({
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { signOut } = useAuth();
+  const { signOut, profile: authProfile } = useAuth();
   const { profile } = useDashboardData();
+  const isAdmin = authProfile?.role === "admin" || authProfile?.role === "master";
+  const isMaster = authProfile?.role === "master";
+  const menuItems = useMemo(() => buildMenuItems(isAdmin, isMaster), [isAdmin, isMaster]);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [openMenus, setOpenMenus] = useState<{
-    [key: string]: boolean;
-  }>({});
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({});
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  const handleFiles = () => {
-    toast({
-      title: "Arquivos",
-      description: "Gerenciador de arquivos será aberto em breve.",
+  useEffect(() => {
+    const expanded: Record<string, boolean> = {};
+    menuItems.forEach((item) => {
+      if (item.hasSubmenu && item.submenu?.some((sub) => isPathActive(location.pathname, sub.path))) {
+        expanded[item.label] = true;
+      }
     });
-  };
+    if (Object.keys(expanded).length > 0) {
+      setOpenMenus((prev) => ({ ...prev, ...expanded }));
+    }
+  }, [location.pathname, menuItems]);
 
   const handleProfile = () => {
     navigate("/dashboard/settings");
@@ -154,11 +182,9 @@ const DashboardLayout = ({
       {/* Sidebar - Fixed */}
       <aside 
         className={cn(
-          "fixed left-0 top-0 h-screen bg-background flex flex-col transition-all duration-300 ease-in-out z-40",
-          // Desktop behavior
+          "fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground border-r border-sidebar-border flex flex-col transition-all duration-300 ease-in-out z-40 shadow-sm",
           "hidden md:flex",
           isExpanded ? "md:w-64" : "md:w-16",
-          // Mobile behavior
           isMobileMenuOpen && "flex w-64 md:hidden"
         )} 
         onMouseEnter={() => setIsExpanded(true)} 
@@ -166,30 +192,32 @@ const DashboardLayout = ({
         role="navigation"
         aria-label="Menu principal"
       >
-        {/* Logo Area - Dark */}
-        <div className="bg-[#1a1a1a] h-16 flex items-center px-4 border-b border-gray-800">
-          <Link to="/dashboard" className="flex items-center gap-2">
+        <div className={cn(NUvia_HEADER, "h-16 flex items-center px-3 text-white shrink-0")}>
+          <Link to="/dashboard" className="flex items-center gap-2 min-w-0">
             <img 
               src={nuviaIcon} 
               alt="Nuvia Customer Cloud - Voltar para início" 
-              className="h-12 w-12 shrink-0" 
+              className="h-10 w-10 shrink-0" 
             />
             {(isExpanded || isMobileMenuOpen) && (
-              <span className="text-white font-semibold tracking-wide whitespace-nowrap">
-                Nuvia
-              </span>
+              <img
+                src={nuviaLogo}
+                alt="Nuvia Customer Cloud"
+                className="h-8 w-auto max-w-[140px] object-contain"
+              />
             )}
           </Link>
         </div>
 
-        {/* Gradient Bar */}
-        <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" aria-hidden="true" />
+        <div className={NUvia_GRADIENT} aria-hidden="true" />
 
         {/* Menu */}
         <nav className="flex-1 space-y-1 px-2 py-4 overflow-y-auto" aria-label="Navegação do dashboard">
           {menuItems.map((item) => {
             const Icon = item.icon;
-            const isActive = item.path && location.pathname === item.path;
+            const isActive = item.path
+              ? isPathActive(location.pathname, item.path)
+              : item.submenu?.some((sub) => isPathActive(location.pathname, sub.path));
             const isOpen = openMenus[item.label];
             const showExpanded = isExpanded || isMobileMenuOpen;
 
@@ -200,9 +228,7 @@ const DashboardLayout = ({
                     <button 
                       className={cn(
                         "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                        isActive 
-                          ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                        isActive ? menuItemActive : menuItemIdle
                       )}
                       aria-expanded={isOpen}
                       aria-controls={`submenu-${item.label}`}
@@ -212,7 +238,7 @@ const DashboardLayout = ({
                         <>
                           <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
                           {item.badge && (
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                            <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                               {item.badge}
                             </span>
                           )}
@@ -224,16 +250,16 @@ const DashboardLayout = ({
                   {showExpanded && (
                     <CollapsibleContent className="space-y-1" id={`submenu-${item.label}`}>
                       {item.submenu.map(subItem => {
-                        const isSubActive = location.pathname === subItem.path;
+                        const isSubActive = isPathActive(location.pathname, subItem.path);
                         return (
                           <Link 
                             key={subItem.path} 
                             to={subItem.path} 
                             className={cn(
                               "flex items-center gap-3 rounded-md pl-12 pr-3 py-2 text-sm transition-all relative focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                              isSubActive 
-                                ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-6 before:bg-primary before:rounded-r" 
-                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              isSubActive
+                                ? "bg-sidebar-accent text-sidebar-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-6 before:bg-primary before:rounded-r"
+                                : menuItemIdle
                             )}
                             onClick={() => setIsMobileMenuOpen(false)}
                           >
@@ -253,9 +279,7 @@ const DashboardLayout = ({
                   key={item.label} 
                   className={cn(
                     "w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                    isActive 
-                      ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    isActive ? menuItemActive : menuItemIdle
                   )}
                 >
                   <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -263,7 +287,7 @@ const DashboardLayout = ({
                     <>
                       <span className="flex-1 text-left whitespace-nowrap">{item.label}</span>
                       {item.badge && (
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                           {item.badge}
                         </span>
                       )}
@@ -280,9 +304,7 @@ const DashboardLayout = ({
                 to={item.path!} 
                 className={cn(
                   "flex items-center gap-3 rounded-md px-3 py-3 text-sm transition-all relative group focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-                  isActive 
-                    ? "bg-primary/10 text-primary font-medium before:absolute before:left-0 before:top-1/2 before:-translate-y-1/2 before:w-1 before:h-8 before:bg-primary before:rounded-r" 
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  isActive ? menuItemActive : menuItemIdle
                 )}
                 onClick={() => setIsMobileMenuOpen(false)}
               >
@@ -291,7 +313,7 @@ const DashboardLayout = ({
                   <>
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
                     {item.badge && (
-                      <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
+                      <span className="text-xs bg-sidebar-accent text-sidebar-foreground/70 px-2 py-0.5 rounded-full">
                         {item.badge}
                       </span>
                     )}
@@ -303,14 +325,14 @@ const DashboardLayout = ({
         </nav>
 
         {/* Settings at bottom */}
-        <div className="border-t border-border">
+        <div className="border-t border-sidebar-border">
           <Link 
-            to="/dashboard/organization-settings" 
+            to="/dashboard/settings" 
             className={cn(
-              "flex items-center gap-3 px-3 py-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2", 
-              location.pathname === "/dashboard/organization-settings" 
-                ? "text-primary font-medium" 
-                : "text-muted-foreground hover:text-foreground"
+              "flex items-center gap-3 px-3 py-4 text-sm transition-all focus-visible:ring-2 focus-visible:ring-sidebar-ring focus-visible:ring-offset-2", 
+              isPathActive(location.pathname, "/dashboard/settings")
+                ? "text-sidebar-primary font-medium bg-sidebar-accent" 
+                : menuItemIdle
             )}
             onClick={() => setIsMobileMenuOpen(false)}
           >
@@ -327,12 +349,12 @@ const DashboardLayout = ({
         isExpanded && "md:ml-64"
       )}>
         {/* Dark Header with Gradient - Fixed */}
-        <header className="sticky top-0 z-50 bg-[#1a1a1a] border-b border-gray-800">
+        <header className={cn("sticky top-0 z-50 text-white", NUvia_HEADER)}>
           <div className="h-16 flex items-center justify-between px-4 md:px-6">
             <Button 
               variant="ghost" 
               size="icon" 
-              className="md:hidden text-white hover:bg-white/10"
+              className={cn("md:hidden", NUvia_HEADER_BTN)}
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               aria-label={isMobileMenuOpen ? "Fechar menu" : "Abrir menu"}
               aria-expanded={isMobileMenuOpen}
@@ -349,7 +371,7 @@ const DashboardLayout = ({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]" 
+                      className={NUvia_HEADER_BTN}
                       onClick={() => setIsChatOpen(!isChatOpen)}
                       aria-label="Abrir assistente virtual"
                     >
@@ -373,7 +395,7 @@ const DashboardLayout = ({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="text-white hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                      className={NUvia_HEADER_BTN}
                       onClick={() => navigate("/dashboard/suggestions")}
                       aria-label="Abrir caixa de sugestões"
                     >
@@ -391,7 +413,7 @@ const DashboardLayout = ({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="text-white hover:bg-white/10 gap-2 hidden sm:flex focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                    className={cn(NUvia_HEADER_BTN, "gap-2 hidden sm:flex")}
                     aria-label="Selecionar organização"
                   >
                     <div className="text-left">
@@ -422,8 +444,9 @@ const DashboardLayout = ({
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="ghost" 
-                    className="relative h-10 w-10 rounded-full hover:bg-white/10 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-[#1a1a1a]"
+                    className={cn("relative h-10 w-10 rounded-full", NUvia_HEADER_BTN)}
                     aria-label="Menu do usuário"
+                    data-testid="user-menu"
                   >
                     <Avatar className="h-10 w-10">
                       <AvatarFallback className="bg-primary text-primary-foreground">
@@ -457,7 +480,7 @@ const DashboardLayout = ({
             </div>
           </div>
           {/* Gradient Bar */}
-          <div className="h-1 bg-gradient-to-r from-purple-600 via-purple-500 to-pink-500" aria-hidden="true" />
+          <div className={NUvia_GRADIENT} aria-hidden="true" />
         </header>
 
         {/* Page content */}

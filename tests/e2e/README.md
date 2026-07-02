@@ -57,13 +57,17 @@ pnpm exec playwright test stripe-integration
 
 ## Variáveis de Ambiente
 
-Crie um arquivo `.env.test` com as seguintes variáveis:
+Use `.env.local` ou exporte antes de rodar:
 
 ```env
-PLAYWRIGHT_TEST_BASE_URL=http://localhost:3000
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_anon_key
+PLAYWRIGHT_TEST_BASE_URL=http://127.0.0.1:4173
+VITE_SUPABASE_URL=https://dztevycwxlnrrvnvutyc.supabase.co
+VITE_SUPABASE_ANON_KEY=sua_anon_key
+SUPABASE_SERVICE_ROLE_KEY=sua_service_role_key  # recomendado no CI
+E2E_EMAIL_DOMAIN=nuvia.com  # não usar @test.com (bloqueado pelo Auth)
 ```
+
+No GitHub Actions, configure os secrets `VITE_SUPABASE_*` e `SUPABASE_SERVICE_ROLE_KEY` do projeto `dztevycwxlnrrvnvutyc`.
 
 ## Notas
 

@@ -6,43 +6,44 @@ import { Loader2 } from 'lucide-react';
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requireAdmin?: boolean;
+  requireMaster?: boolean;
 }
 
-export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRouteProps) => {
+export const ProtectedRoute = ({ children, requireAdmin = false, requireMaster = false }: ProtectedRouteProps) => {
   const { isAuthenticated, isLoading, checkRole } = useAuth();
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [adminCheckDone, setAdminCheckDone] = useState(false);
+  const [hasRequiredRole, setHasRequiredRole] = useState<boolean | null>(null);
+  const [roleCheckDone, setRoleCheckDone] = useState(false);
   const location = useLocation();
   const checkingRef = useRef(false);
-
+  const needsRoleCheck = requireAdmin || requireMaster;
 
   useEffect(() => {
-    // Se não requer admin, marcar como feito
-    if (!requireAdmin) {
-      setIsAdmin(true);
-      setAdminCheckDone(true);
+    if (!needsRoleCheck) {
+      setHasRequiredRole(true);
+      setRoleCheckDone(true);
       return;
     }
 
-    // Se requer admin, verificar apenas quando autenticado e não estiver loading
     if (!isLoading && isAuthenticated && !checkingRef.current) {
       checkingRef.current = true;
-      
-      checkRole('admin')
+
+      const roleToCheck = requireMaster ? 'master' : 'admin';
+
+      checkRole(roleToCheck)
         .then((result) => {
-          setIsAdmin(result);
-          setAdminCheckDone(true);
+          setHasRequiredRole(result);
+          setRoleCheckDone(true);
         })
         .catch((error) => {
-          console.error('[ProtectedRoute] Error checking admin role:', error);
-          setIsAdmin(false);
-          setAdminCheckDone(true);
+          console.error('[ProtectedRoute] Error checking role:', error);
+          setHasRequiredRole(false);
+          setRoleCheckDone(true);
         })
         .finally(() => {
           checkingRef.current = false;
         });
     }
-  }, [isAuthenticated, isLoading, requireAdmin, checkRole]);
+  }, [isAuthenticated, isLoading, needsRoleCheck, requireAdmin, requireMaster, checkRole]);
 
   // Mostrar loading enquanto verifica autenticação
   if (isLoading) {
@@ -61,8 +62,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  // Mostrar loading enquanto verifica admin (se necessário)
-  if (requireAdmin && !adminCheckDone) {
+  if (needsRoleCheck && !roleCheckDone) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <div className="text-center space-y-4">
@@ -73,8 +73,7 @@ export const ProtectedRoute = ({ children, requireAdmin = false }: ProtectedRout
     );
   }
 
-  // Redirecionar para dashboard se requer admin mas não é admin
-  if (requireAdmin && !isAdmin) {
+  if (needsRoleCheck && !hasRequiredRole) {
     return <Navigate to="/dashboard" replace />;
   }
 
